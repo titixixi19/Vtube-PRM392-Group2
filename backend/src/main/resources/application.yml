@@ -1,0 +1,38 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: vtube-api
+  datasource:
+    # File vtube.db nằm cạnh thư mục chạy backend (thư mục backend/)
+    url: jdbc:sqlite:vtube.db?foreign_keys=true&busy_timeout=5000&journal_mode=WAL
+    driver-class-name: org.sqlite.JDBC
+    hikari:
+      # SQLite chỉ cho 1 luồng ghi; dùng 1 kết nối để tránh lỗi SQLITE_BUSY
+      maximum-pool-size: 1
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+      # Dữ liệu mẫu (seed.sql) do DatabaseSeeder nạp khi DB còn trống
+  servlet:
+    multipart:
+      max-file-size: 500MB
+      max-request-size: 500MB
+  jackson:
+    default-property-inclusion: always
+
+app:
+  upload-dir: uploads
+  token-days: 30
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: alpha
+    tags-sorter: alpha
+
+logging:
+  level:
+    com.vtube: INFO

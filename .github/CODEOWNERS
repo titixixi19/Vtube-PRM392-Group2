@@ -1,0 +1,21 @@
+# Thay @truong-nhom, @nguoi-1 ... @nguoi-4 bằng username GitHub thật.
+# Ai sửa thư mục nào thì chủ thư mục được tự động mời review.
+
+# Mặc định: trưởng nhóm
+*                                   @truong-nhom
+
+# Màn hình của từng người
+/mobile/lib/features/auth/          @nguoi-1
+/mobile/lib/features/watch/         @nguoi-2
+/mobile/lib/features/explore/       @nguoi-3
+/mobile/lib/features/library/       @nguoi-4
+
+# Phần dùng chung: luôn cần trưởng nhóm
+/mobile/lib/app/                    @truong-nhom
+/mobile/lib/core/                   @truong-nhom
+/mobile/lib/data/                   @truong-nhom
+/mobile/lib/shared/                 @truong-nhom
+/mobile/pubspec.yaml                @truong-nhom
+/backend/                           @truong-nhom
+/docs/API.md                        @truong-nhom
+/docs/DATABASE.md                   @truong-nhom

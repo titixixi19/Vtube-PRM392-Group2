@@ -1,0 +1,7 @@
+# Thống nhất xuống dòng LF trong repo (Windows vẫn checkout CRLF nếu bật autocrlf)
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.png binary
+*.jpg binary
+*.mp4 binary

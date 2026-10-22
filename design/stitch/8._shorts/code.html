@@ -1,0 +1,206 @@
+<!DOCTYPE html><html class="dark" lang="vi"><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"><meta content="mobile_shorts" name="shell-type"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base{html,body{width:100vw;margin:0;padding:0;background-color:#000000;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "on-secondary-fixed": "#001d35", "on-error-container": "#ffdad6", "tertiary-fixed-dim": "#c6c6c7", "secondary-fixed-dim": "#9ccaff", "surface-bright": "#3a3939", "outline": "#b18780", "primary-container": "#ff5540", "tertiary-fixed": "#e2e2e2", "primary": "#ffb4a8", "on-secondary-container": "#002b4c", "secondary-container": "#2295ed", "error-container": "#93000a", "on-primary": "#690100", "on-tertiary-fixed-variant": "#454747", "on-secondary-fixed-variant": "#00497b", "on-tertiary": "#2f3131", "on-surface": "#e5e2e1", "surface-dim": "#131313", "on-tertiary-fixed": "#1a1c1c", "surface-variant": "#353534", "inverse-primary": "#c00100", "inverse-on-surface": "#313030", "tertiary": "#c6c6c7", "surface-container-lowest": "#0e0e0e", "on-error": "#690005", "error": "#ffb4ab", "secondary": "#9ccaff", "on-secondary": "#003257", "background": "#131313", "surface": "#131313", "outline-variant": "#603e39", "on-primary-fixed-variant": "#930100", "surface-container-high": "#2a2a2a", "inverse-surface": "#e5e2e1", "on-background": "#e5e2e1", "surface-container-low": "#1c1b1b", "surface-tint": "#ffb4a8", "on-tertiary-container": "#282a2a", "primary-fixed-dim": "#ffb4a8", "surface-container-highest": "#353534", "surface-container": "#201f1f", "on-primary-container": "#5c0000", "on-primary-fixed": "#410000", "primary-fixed": "#ffdad4", "on-surface-variant": "#ebbbb4", "tertiary-container": "#909191", "secondary-fixed": "#d0e4ff" }, borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, spacing: { "space-md": "0.75rem", "space-xl": "1.5rem", "space-sm": "0.5rem", "space-xs": "0.25rem", "space-lg": "1rem", "margin": "0.75rem", "gutter": "0.75rem" }, fontFamily: { "headline-md": ["Inter"], "label-sm": ["Inter"], "label-md": ["Inter"], "headline-lg": ["Inter"], "title-md": ["Inter"], "headline-sm": ["Inter"], "body-sm": ["Inter"], "body-lg": ["Inter"], "label-lg": ["Inter"], "body-md": ["Inter"] }, fontSize: { "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "label-sm": ["10px", { "lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "500" }], "label-md": ["12px", { "lineHeight": "16px", "fontWeight": "500" }], "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "title-md": ["15px", { "lineHeight": "20px", "fontWeight": "500" }], "headline-sm": ["16px", { "lineHeight": "22px", "fontWeight": "600" }], "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }], "body-lg": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "label-lg": ["14px", { "lineHeight": "20px", "fontWeight": "600" }], "body-md": ["13px", { "lineHeight": "18px", "fontWeight": "400" }] } } } };</script></head><body class="bg-black font-body-md text-on-surface antialiased flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 pt-safe bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none"><div class="flex justify-between items-center px-margin h-6 text-white/90 pointer-events-auto"><span class="font-label-sm text-label-sm font-semibold tracking-tight text-white">09:41</span><div class="flex items-center gap-space-xs text-white"><span class="material-symbols-outlined text-sm leading-none">signal_cellular_alt</span><span class="material-symbols-outlined text-sm leading-none">wifi</span><span class="material-symbols-outlined text-sm leading-none">battery_full</span></div></div><div class="h-12 px-margin flex items-center justify-between pointer-events-auto"><span class="font-headline-sm text-headline-sm tracking-tight text-white font-bold drop-shadow-md">Shorts</span><div class="flex items-center gap-space-xs"><button aria-label="Search" class="w-11 h-11 flex items-center justify-center text-white hover:text-primary transition-colors drop-shadow-md"><span class="material-symbols-outlined text-[24px]">search</span></button><button aria-label="Menu" class="w-11 h-11 flex items-center justify-center text-white hover:text-primary transition-colors drop-shadow-md"><span class="material-symbols-outlined text-[24px]">more_vert</span></button></div></div></header><main class="flex flex-col relative w-full pb-[56px] min-h-screen"><div class="flex flex-col w-full relative select-none overflow-hidden" id="shorts-container">
+<!-- Immersive Vertical Video Simulation Canvas -->
+<div class="relative w-full max-h-[calc(100vh-56px)] bg-surface-container-lowest flex items-center justify-center overflow-hidden h-[calc(100vh-56px)]">
+<!-- Simulated Video Background (Cinematic Street Scene) -->
+<div class="absolute inset-0 bg-cover bg-center w-full h-full scale-105 transition-transform duration-700 ease-out" data-alt="Cinematic vertical 9:16 shot of vibrant Hanoi old quarter cafe at golden hour dusk with neon red signage, steaming egg coffee cup in foreground, cinematic depth of field, neon city bokeh, warm cozy ambient lighting, ultra realistic 4k mobile video frame" id="video-frame" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAgSkSctqgmzks-3PV83tzMu1cv8r6rk9TPah-srGh8S1dZzAr9L6xMerPnny5xu9m3NrHw0WwCp4vhfY7bX_HoB_Gye0c4C7psu5j0yy093r64sx5tF8IRaDgkLcqilyW69lheDjIgvcwb6OkYKFf8keB5cELwilrDGYrZi3K6Md0DIOAQ0M5SIs1ggrcj-wiWjolx-eFpfHyUkPa244l-D3AuZN3HriNOlab3RQjOBnaUr0Rxxgc')">
+</div>
+<!-- Soft Vignette & Gradient Overlays for High Legibility -->
+<div class="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/90 pointer-events-none"></div>
+<div class="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-black/40 pointer-events-none"></div>
+<!-- Top Floating Quick Controls (Camera & Feed Tabs) -->
+<div class="absolute top-2 left-margin right-margin flex items-center justify-between z-20 pointer-events-auto">
+<div class="flex items-center gap-space-sm bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full shadow-md">
+<button class="font-label-md text-white font-semibold flex items-center gap-1 active:scale-95 transition-transform">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container animate-pulse"></span>
+<span class="">Dành cho bạn</span>
+</button>
+<span class="text-white/40 font-label-sm">•</span>
+<button class="font-label-md text-white/70 hover:text-white transition-colors active:scale-95">
+          Đang theo dõi
+        </button>
+</div>
+<button aria-label="Camera" class="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white active:scale-90 transition-transform shadow-md">
+<span class="material-symbols-outlined text-[20px]">photo_camera</span>
+</button>
+</div>
+<!-- Central Tap Interaction Target & Heart Particle Host -->
+<div class="absolute inset-0 z-10 flex items-center justify-center cursor-pointer" id="video-tap-area">
+<!-- Play/Pause Micro-indicator (Hidden until tapped) -->
+<div class="w-16 h-16 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center text-white opacity-0 scale-75 transition-all duration-300 pointer-events-none" id="play-pause-icon">
+<span class="material-symbols-outlined text-[36px]" id="play-symbol">play_arrow</span>
+</div>
+</div>
+<!-- Right-side Vertical Action Column -->
+<div class="absolute right-2 z-20 flex flex-col items-center gap-space-md pointer-events-auto bottom-5">
+<!-- Like Button -->
+<div class="flex flex-col items-center group">
+<button class="w-12 h-12 rounded-full bg-white/10 backdrop-blur-lg flex items-center justify-center text-white active:scale-75 transition-all shadow-md group-hover:bg-white/20" id="like-btn">
+<span class="material-symbols-outlined text-[28px] transition-transform" id="like-icon">thumb_up</span>
+</button>
+<span class="font-label-sm text-label-sm text-white font-medium mt-1 drop-shadow-md" id="like-count">482 N</span>
+</div>
+<!-- Dislike Button -->
+<div class="flex flex-col items-center group">
+<button class="w-12 h-12 rounded-full bg-white/10 backdrop-blur-lg flex items-center justify-center text-white active:scale-75 transition-all shadow-md group-hover:bg-white/20" id="dislike-btn">
+<span class="material-symbols-outlined text-[28px]" id="dislike-icon">thumb_down</span>
+</button>
+<span class="font-label-sm text-label-sm text-white font-medium mt-1 drop-shadow-md">Không thích</span>
+</div>
+<!-- Comments Button -->
+<div class="flex flex-col items-center group">
+<button class="w-12 h-12 rounded-full bg-white/10 backdrop-blur-lg flex items-center justify-center text-white active:scale-75 transition-all shadow-md group-hover:bg-white/20" id="comment-btn">
+<span class="material-symbols-outlined text-[28px]">chat_bubble</span>
+</button>
+<span class="font-label-sm text-label-sm text-white font-medium mt-1 drop-shadow-md">3,8 N</span>
+</div>
+<!-- Share Button -->
+<div class="flex flex-col items-center group">
+<button class="w-12 h-12 rounded-full bg-white/10 backdrop-blur-lg flex items-center justify-center text-white active:scale-75 transition-all shadow-md group-hover:bg-white/20" id="share-btn">
+<span class="material-symbols-outlined text-[28px]">share</span>
+</button>
+<span class="font-label-sm text-label-sm text-white font-medium mt-1 drop-shadow-md">Chia sẻ</span>
+</div>
+<!-- Remix Button -->
+<div class="flex flex-col items-center group">
+<button class="w-12 h-12 rounded-full bg-white/10 backdrop-blur-lg flex items-center justify-center text-white active:scale-75 transition-all shadow-md group-hover:bg-white/20">
+<span class="material-symbols-outlined text-[28px]">auto_videocam</span>
+</button>
+<span class="font-label-sm text-label-sm text-white font-medium mt-1 drop-shadow-md">Remix</span>
+</div>
+<!-- Rotating Audio Vinyl Cover with Red Ambient Glow -->
+<div class="relative mt-2 flex items-center justify-center">
+<div class="absolute inset-0 rounded-full bg-primary-container blur-sm opacity-60 animate-pulse"></div>
+<div class="w-10 h-10 rounded-full p-0.5 bg-gradient-to-tr from-primary-container to-secondary-container shadow-xl">
+<div class="w-full h-full rounded-full overflow-hidden animate-[spin_6s_linear_infinite] flex items-center justify-center bg-black">
+<img class="w-full h-full object-cover" data-alt="Square vinyl album art with minimalist coffee cup artwork in vibrant retro red colors" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAlG_avliDc8ELAFswmX7HfD-ZjKTAdq4KMQjWAb0NhVn-RJ3BUiLLkocIvkaDmRN7Y6smwt1aiDMdtGNXTtF7dcUVcTId3HAjrCixS1SUUZflr552KvnIdivRElAvhAYkaSy3kN9hlEMZ9ySvwM3vDy2kMuYk5HoDsKOhZYmZY8Ig3o85wA7DFAaBdfb9MloE1ICVFQvQMJ5mQ6codTljJIbwWER_BIigwm39GIA0JoMjOi8aLqAE">
+</div>
+</div>
+<!-- Little Floating Note Animation -->
+<span class="material-symbols-outlined text-[14px] text-white absolute -top-1 -left-1 opacity-75 animate-bounce">music_note</span>
+</div>
+</div>
+<!-- Bottom-Left Metadata Overlay -->
+<div class="absolute left-margin right-16 bottom-5 z-20 flex flex-col gap-space-sm text-white pointer-events-auto"><div class="flex items-center gap-space-sm"><div class="relative w-10 h-10 rounded-full p-0.5 bg-gradient-to-r from-primary-container via-surface-bright to-transparent"><div class="w-full h-full rounded-full overflow-hidden bg-surface-container"><img class="w-full h-full object-cover" data-alt="Portrait photo of a young Vietnamese creator smiling warmly wearing modern streetwear" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAHMJPRgs1_hrM2si2ZyZDhKwSZxTAXeOYdv1K3eUosWCiILkiBS281vGW3fvc2_Q_6n22yOQlz_fjcb5d_TU8tPs4zCaIDw499dsNqRN1ETcnQKCq51lcVohW1xjuM3_SFxdgy5Ss3rh0HwCKB_NMi6srIyOhG9BJ4dpnjBBGmuqSCDc6GWSxZkKWb4zhV2uQ4Z7VtYtfw5lxr-t2i-9JlImueZGsb7IQ8FuYY8HoWDh4EPEmkl0c"></div></div><div class="flex items-center gap-1 min-w-0"><span class="font-title-md text-title-md text-white font-semibold truncate drop-shadow-md">@vietnam_vibes</span><span class="material-symbols-outlined text-[16px] text-secondary-container drop-shadow" style="font-variation-settings: 'FILL' 1;">verified</span></div><button class="ml-1 px-3 py-1.5 rounded-full bg-primary-container text-white font-label-md text-label-md font-bold shadow-lg hover:opacity-95 active:scale-95 transition-all flex items-center gap-1" id="subscribe-btn"><span id="sub-text" class="">Đăng ký</span></button></div><div class="relative max-w-full"><p class="font-body-md text-body-md text-white/95 line-clamp-2 leading-snug drop-shadow-md pr-2">Ghé thăm quán cà phê trứng view triệu đô giữa phố cổ Hà Nội ☕✨ <span class="font-semibold text-primary">#hanoi</span> <span class="font-semibold text-primary">#travel</span></p></div><div class="flex items-center gap-1.5 text-white/80 overflow-hidden max-w-xs mt-0.5"><span class="material-symbols-outlined text-[16px] text-primary shrink-0 animate-spin" style="animation-duration: 8s;">graphic_eq</span><div class="font-label-md text-label-md truncate drop-shadow-sm flex items-center gap-1"><span class="">Nhạc nền gốc - Vietnam Vibes</span><span class="text-white/40">•</span><span class="text-white/90 font-medium">Âm thanh thịnh hành</span></div></div></div>
+<!-- Active Red Playback Scrub Line -->
+<div class="absolute bottom-0 left-0 right-0 h-1 bg-white/20 z-30">
+<div class="h-full bg-primary-container rounded-r-full w-[42%] relative" id="video-progress" style="width: 95%;">
+<div class="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white shadow-[0_0_8px_rgba(255,85,64,0.8)] scale-0 transition-transform group-hover:scale-100"></div>
+</div>
+</div>
+</div>
+<!-- Interactive Comment Bottom Sheet (Hidden Drawer) -->
+
+<!-- Share Toast Alert Micro-interaction -->
+<div class="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-surface-container-highest text-on-surface px-4 py-2 rounded-full font-label-md text-label-md shadow-xl opacity-0 pointer-events-none transition-all duration-200 flex items-center gap-2" id="toast">
+<span class="material-symbols-outlined text-secondary text-[18px]">check_circle</span>
+<span id="toast-message" class="">Đã sao chép liên kết</span>
+</div>
+</div>
+<script>
+  (function () {
+    const likeBtn = document.getElementById('like-btn');
+    const likeIcon = document.getElementById('like-icon');
+    const likeCount = document.getElementById('like-count');
+    const subscribeBtn = document.getElementById('subscribe-btn');
+    const subText = document.getElementById('sub-text');
+    const shareBtn = document.getElementById('share-btn');
+    const commentBtn = document.getElementById('comment-btn');
+    const closeComment = document.getElementById('close-comment');
+    const commentSheet = document.getElementById('comment-sheet');
+    const videoTapArea = document.getElementById('video-tap-area');
+    const playPauseIcon = document.getElementById('play-pause-icon');
+    const playSymbol = document.getElementById('play-symbol');
+    const toast = document.getElementById('toast');
+    const toastMessage = document.getElementById('toast-message');
+    const videoProgress = document.getElementById('video-progress');
+
+    let isLiked = false;
+    let isSubscribed = false;
+    let isPlaying = true;
+    let progressVal = 42;
+
+    // Toast helper
+    function showToast(msg) {
+      toastMessage.textContent = msg;
+      toast.classList.remove('opacity-0', 'pointer-events-none');
+      toast.classList.add('opacity-100');
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'pointer-events-none');
+        toast.classList.remove('opacity-100');
+      }, 2000);
+    }
+
+    // Like Toggle with tactile bounce
+    likeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      isLiked = !isLiked;
+      if (isLiked) {
+        likeIcon.style.fontVariationSettings = "'FILL' 1";
+        likeIcon.classList.add('text-primary-container', 'scale-125');
+        likeCount.textContent = "483 N";
+        likeCount.classList.add('text-primary');
+      } else {
+        likeIcon.style.fontVariationSettings = "'FILL' 0";
+        likeIcon.classList.remove('text-primary-container', 'scale-125');
+        likeCount.textContent = "482 N";
+        likeCount.classList.remove('text-primary');
+      }
+    });
+
+    // Subscribe Toggle
+    subscribeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      isSubscribed = !isSubscribed;
+      if (isSubscribed) {
+        subscribeBtn.classList.remove('bg-primary-container', 'text-white');
+        subscribeBtn.classList.add('bg-surface-container-high', 'text-on-surface');
+        subText.textContent = "Đã đăng ký";
+        showToast("Đã đăng ký kênh @vietnam_vibes");
+      } else {
+        subscribeBtn.classList.add('bg-primary-container', 'text-white');
+        subscribeBtn.classList.remove('bg-surface-container-high', 'text-on-surface');
+        subText.textContent = "Đăng ký";
+      }
+    });
+
+    // Share action
+    shareBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showToast("Đã sao chép liên kết video!");
+    });
+
+    // Comments Sheet Toggle
+    commentBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      commentSheet.classList.remove('translate-y-full');
+    });
+
+    closeComment.addEventListener('click', () => {
+      commentSheet.classList.add('translate-y-full');
+    });
+
+    // Tap to Play / Pause micro-interaction
+    videoTapArea.addEventListener('click', () => {
+      isPlaying = !isPlaying;
+      playSymbol.textContent = isPlaying ? 'play_arrow' : 'pause';
+      playPauseIcon.classList.remove('opacity-0', 'scale-75');
+      playPauseIcon.classList.add('opacity-100', 'scale-100');
+      setTimeout(() => {
+        playPauseIcon.classList.add('opacity-0', 'scale-75');
+        playPauseIcon.classList.remove('opacity-100', 'scale-100');
+      }, 500);
+    });
+
+    // Smooth subtle progress crawl simulation
+    setInterval(() => {
+      if (isPlaying) {
+        progressVal = (progressVal + 0.3) % 100;
+        videoProgress.style.width = progressVal + '%';
+      }
+    }, 200);
+  })();
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-black/90 backdrop-blur-xl shadow-[0_-2px_12px_rgba(0,0,0,0.65)]" data-active-classes="text-on-surface font-semibold"><div class="flex justify-around items-center h-14 px-margin"><a class="flex flex-col items-center justify-center gap-0.5 min-w-[56px] h-12 text-on-surface-variant hover:text-on-surface transition-all" data-path="5-trang-chu" href="#"><span class="material-symbols-outlined text-[24px]">home</span><span class="font-label-sm text-label-sm">Trang chủ</span></a><a class="flex flex-col items-center justify-center gap-0.5 min-w-[56px] h-12 text-on-surface font-semibold transition-all" data-path="8-shorts" href="#"><span class="material-symbols-outlined text-[24px] text-primary-container fill-1">bolt</span><span class="font-label-sm text-label-sm text-on-surface">Shorts</span></a><a class="flex flex-col items-center justify-center min-w-[56px] h-12 text-on-surface transition-all" data-path="tao" href="#"><div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center border border-surface-bright active:scale-95 transition-transform"><span class="material-symbols-outlined text-[26px] text-on-surface">add</span></div><span class="sr-only">Tạo</span></a><a class="flex flex-col items-center justify-center gap-0.5 min-w-[56px] h-12 text-on-surface-variant hover:text-on-surface transition-all" data-path="kenh-dang-ky" href="#"><span class="material-symbols-outlined text-[24px]">subscriptions</span><span class="font-label-sm text-label-sm">Kênh đăng ký</span></a><a class="flex flex-col items-center justify-center gap-0.5 min-w-[56px] h-12 text-on-surface-variant hover:text-on-surface transition-all" data-path="4-trang-ban" href="#"><div class="w-6 h-6 rounded-full overflow-hidden flex items-center justify-center"><img alt="Bạn" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDoSxJ9LmaPVxonnC3nnVAZdF1GYDcIcSMinXpTgGQb5vTE7-RLTTjJuaqsf1jEonhBDg0T2ZaJ_JTX-foXqh0c4YmCDJLnN37-00NZYDlxP009v_8bKQ6wPGn1DsSzS9iZezcqHu_eyhomS74pAIJY4_mRXIZ5C84ibZNQPJDAhSyOz_36c4Rronqa9Z0DJ8n0Zb2fqVX18CFXN2OoGguaiZBtqaaHb3k9eRkzupOl7S9RvAJZXwg"></div><span class="font-label-sm text-label-sm">Bạn</span></a></div></nav>
+
+</body></html>

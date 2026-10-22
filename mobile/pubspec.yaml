@@ -1,0 +1,37 @@
+name: vtube
+description: "VTube - ứng dụng giả lập YouTube (PRM393)"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  # Điều hướng + bottom nav giữ trạng thái từng tab
+  go_router: ^14.6.2
+  # Quản lý state (AuthProvider)
+  provider: ^6.1.2
+  # Gọi REST API
+  dio: ^5.7.0
+  # Lưu token đăng nhập, lịch sử tìm kiếm khi là khách
+  shared_preferences: ^2.3.3
+  # Ảnh từ mạng có cache
+  cached_network_image: ^3.4.1
+  # Trình phát video (Người 2)
+  video_player: ^2.9.2
+  chewie: ^1.8.5
+  # Chọn video / ảnh để upload (Người 1: avatar, Người 4: upload)
+  image_picker: ^1.1.2
+  # Nút Chia sẻ
+  share_plus: ^10.1.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true

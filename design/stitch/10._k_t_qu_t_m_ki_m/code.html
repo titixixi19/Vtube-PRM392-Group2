@@ -1,0 +1,272 @@
+<!DOCTYPE html><html class="dark" lang="vi"><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"><meta content="mobile_stack" name="shell-type"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-error-container": "#ffdad6", "inverse-surface": "#e5e2e1", "surface-bright": "#3a3939", "on-primary": "#690100", "surface": "#131313", "on-tertiary": "#2f3131", "surface-container-highest": "#353534", "secondary-fixed": "#d0e4ff", "surface-container-low": "#1c1b1b", "on-secondary": "#003257", "outline": "#b18780", "on-tertiary-container": "#282a2a", "surface-container-lowest": "#0e0e0e", "secondary-fixed-dim": "#9ccaff", "on-primary-fixed": "#410000", "tertiary-fixed-dim": "#c6c6c7", "inverse-primary": "#c00100", "surface-dim": "#131313", "inverse-on-surface": "#313030", "on-surface": "#e5e2e1", "surface-container-high": "#2a2a2a", "background": "#131313", "on-tertiary-fixed": "#1a1c1c", "surface-variant": "#353534", "on-surface-variant": "#ebbbb4", "surface-tint": "#ffb4a8", "on-error": "#690005", "on-secondary-fixed": "#001d35", "primary-fixed": "#ffdad4", "on-primary-fixed-variant": "#930100", "secondary": "#9ccaff", "on-primary-container": "#5c0000", "secondary-container": "#2295ed", "on-background": "#e5e2e1", "tertiary-container": "#909191", "error-container": "#93000a", "error": "#ffb4ab", "primary-container": "#ff5540", "primary-fixed-dim": "#ffb4a8", "tertiary": "#c6c6c7", "outline-variant": "#603e39", "primary": "#ffb4a8", "on-tertiary-fixed-variant": "#454747", "tertiary-fixed": "#e2e2e2", "surface-container": "#201f1f", "on-secondary-container": "#002b4c", "on-secondary-fixed-variant": "#00497b" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-xs": "0.25rem", "space-lg": "1rem", "space-xl": "1.5rem", "margin": "0.75rem", "space-md": "0.75rem", "space-sm": "0.5rem", "gutter": "0.75rem" }, "fontFamily": { "headline-lg": ["Inter"], "body-md": ["Inter"], "headline-md": ["Inter"], "label-lg": ["Inter"], "label-sm": ["Inter"], "title-md": ["Inter"], "body-sm": ["Inter"], "label-md": ["Inter"], "headline-sm": ["Inter"], "body-lg": ["Inter"] }, "fontSize": { "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "body-md": ["13px", { "lineHeight": "18px", "fontWeight": "400" }], "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "label-lg": ["14px", { "lineHeight": "20px", "fontWeight": "600" }], "label-sm": ["10px", { "lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "500" }], "title-md": ["15px", { "lineHeight": "20px", "fontWeight": "500" }], "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }], "label-md": ["12px", { "lineHeight": "16px", "fontWeight": "500" }], "headline-sm": ["16px", { "lineHeight": "22px", "fontWeight": "600" }], "body-lg": ["14px", { "lineHeight": "20px", "fontWeight": "400" }] } } } }</script><style>@layer base{html,body{width:100vw;margin:0;padding:0;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style></head><body class="bg-surface font-body-md text-on-surface antialiased flex flex-col min-h-screen"><header class="fixed top-0 inset-x-0 z-50 bg-surface/90 backdrop-blur-xl pt-safe shadow-[0_1px_8px_rgba(0,0,0,0.45)]"><div class="h-12 px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm flex-1 min-w-0 mr-space-xs"><button aria-label="Quay lại" class="w-11 h-11 flex items-center justify-center text-on-surface hover:text-primary transition-colors -ml-1.5" onclick="history.back()"><span class="material-symbols-outlined text-[24px]">arrow_back</span></button><h1 class="font-title-md text-title-md text-on-surface truncate">Kết quả tìm kiếm</h1></div><div class="flex items-center gap-space-xs"><button aria-label="Tìm kiếm" class="w-11 h-11 flex items-center justify-center text-on-surface hover:text-primary transition-colors"><span class="material-symbols-outlined text-[22px]">search</span></button></div></div></header><main class="flex flex-col relative w-full pt-12 pb-safe bg-surface min-h-screen"><div class="flex flex-col w-full pb-8">
+<!-- Search Contextual Header Bar (Nested search bar with active query) -->
+<section class="sticky top-0 z-40 bg-surface/95 backdrop-blur-md px-margin py-space-sm flex flex-col gap-space-sm shadow-sm">
+<div class="flex items-center gap-space-sm w-full">
+<!-- Search Input Shell -->
+<div class="flex-1 h-10 bg-surface-container-high rounded-full flex items-center px-space-md gap-space-sm">
+<span class="material-symbols-outlined text-tertiary text-[20px]">search</span>
+<input aria-label="Tìm kiếm video hoặc kênh" class="bg-transparent flex-1 font-body-md text-body-md text-on-surface focus:outline-none placeholder:text-tertiary truncate" id="search-input" type="text" value="flutter tutorial">
+<button aria-label="Xoá nội dung tìm kiếm" class="w-6 h-6 rounded-full flex items-center justify-center text-tertiary hover:text-on-surface transition-colors" id="clear-search-btn">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+<!-- Microphone Voice Action -->
+<button aria-label="Tìm kiếm bằng giọng nói" class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface active:bg-surface-container-highest transition-all shrink-0">
+<span class="material-symbols-outlined text-[20px]">mic</span>
+</button>
+<!-- Filter/Tune Settings Action -->
+<button aria-label="Bộ lọc tìm kiếm" class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface active:bg-surface-container-highest transition-all shrink-0" id="filter-modal-trigger">
+<span class="material-symbols-outlined text-[20px]">tune</span>
+</button>
+</div>
+<!-- Filter Chips Carousel -->
+<div class="flex items-center gap-space-xs overflow-x-auto no-scrollbar py-0.5 -mx-margin px-margin">
+<button class="chip-filter active shrink-0 h-8 px-space-md rounded-full bg-inverse-surface text-inverse-on-surface font-label-md text-label-md font-semibold transition-all shadow-sm">
+        Tất cả
+      </button>
+<button class="chip-filter shrink-0 h-8 px-space-md rounded-full bg-surface-container-high text-on-surface hover:bg-surface-container-highest font-label-md text-label-md transition-all">
+        Video
+      </button>
+<button class="chip-filter shrink-0 h-8 px-space-md rounded-full bg-surface-container-high text-on-surface hover:bg-surface-container-highest font-label-md text-label-md transition-all">
+        Shorts
+      </button>
+<button class="chip-filter shrink-0 h-8 px-space-md rounded-full bg-surface-container-high text-on-surface hover:bg-surface-container-highest font-label-md text-label-md transition-all">
+        Kênh
+      </button>
+<button class="chip-filter shrink-0 h-8 px-space-md rounded-full bg-surface-container-high text-on-surface hover:bg-surface-container-highest font-label-md text-label-md transition-all">
+        Chưa xem
+      </button>
+<button class="chip-filter shrink-0 h-8 px-space-md rounded-full bg-surface-container-high text-on-surface hover:bg-surface-container-highest font-label-md text-label-md transition-all">
+        Đã xem gần đây
+      </button>
+</div>
+</section>
+<!-- Main Search Results Flow -->
+<div class="flex flex-col gap-space-lg px-margin pt-space-md">
+<!-- Feature: Top Verified Channel Showcase Card -->
+<article class="bg-surface-container rounded-xl p-space-md flex items-center gap-space-md shadow-sm">
+<div class="relative shrink-0">
+<img alt="Flutter Dev VN Avatar" class="w-16 h-16 rounded-full object-cover" data-alt="Professional glowing neon cyan flutter bird logo badge on a dark tech background, modern flat vector design with subtle 3D lighting, crisp circular avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDjjwCf83DuFQMAf7mnCZF1vMC2chSwT41aOlrzWE1xCBh4pQmEShW0vbh2nm6rDCFnC-xOfsoqjykOp3t9dF0wq1jKRQ-LvABLsp9bRqKAVV8-HE_sw97Gp8qBL3eY4dXJYU3mdRRmj6LfL7xIoPFSNYj27-fqH5n3NCOlnlgx9M_8k6KoGSlR0C-9Ob5Q8yR5NJMp4a30N0BLY_dMhq609QSv5KUZFybFsPXbtwdfEOZdce8Af0c">
+<div class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px]">check</span>
+</div>
+</div>
+<div class="flex flex-col flex-1 min-w-0">
+<div class="flex items-center gap-1">
+<h2 class="font-headline-sm text-headline-sm text-on-surface truncate">Flutter Dev VN</h2>
+</div>
+<p class="font-body-sm text-body-sm text-tertiary truncate">@flutterdev_vn</p>
+<p class="font-label-sm text-label-sm text-tertiary truncate mt-0.5">128 N người đăng ký • 150 video</p>
+<div class="mt-2.5">
+<button class="h-8 px-space-md rounded-full bg-inverse-surface text-inverse-on-surface font-label-md text-label-md font-semibold inline-flex items-center gap-1.5 shadow-sm active:scale-95 transition-transform" id="sub-btn" onclick="toggleSubscribe(this)">
+<span class="">Đăng ký</span>
+</button>
+</div>
+</div>
+</article>
+<!-- Compact Video Result 1 -->
+<article class="flex gap-space-sm items-start cursor-pointer group">
+<!-- Thumbnail (approx 40% width, 16:9) -->
+<div class="relative w-[42%] aspect-video rounded-lg overflow-hidden shrink-0 bg-surface-container-low shadow-sm">
+<img alt="Tự học Flutter thumbnail" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="A modern laptop displaying vibrant Dart code in VS Code editor with Flutter blue accents, beside a smartphone rendering a colorful mobile application, warm cinematic dark room ambient lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCO5DUFTt7F-km_--MmGb-w16i7U5tCSc86mRN-yMBm05xwHl930TiYhWoJx7kpENFS7lozpJHyOqnhC2qa6uLhqUP7Z6wdkNGL0d6IGRqjLiNB9FeMtyaxdKjV4Kn2yfXOfl0-7wRLurgn7y_z-g1U8OWuusiJnH2tpTMahg9n1dsRp4mAGpN4tHeC5OislISbm1yqX7mlxtHm0no5OtucSdiBgt1VbrEaahNopbl_6Vbl7VvPRX8">
+<!-- Duration Badge -->
+<span class="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-surface-container-lowest/90 text-on-surface font-label-sm text-label-sm">
+          24:15
+        </span>
+<!-- Watched Progress Bar -->
+<div class="absolute bottom-0 inset-x-0 h-1 bg-surface-container-highest">
+<div class="h-full bg-primary-container w-3/4 rounded-r-full"></div>
+</div>
+</div>
+<!-- Video Metadata -->
+<div class="flex-1 min-w-0 flex flex-col justify-between self-stretch">
+<div class="flex items-start justify-between gap-1">
+<h3 class="font-title-md text-title-md text-on-surface line-clamp-2 leading-snug">
+            Tự Học Flutter Từ Con Số 0: Xây Dựng Ứng Dụng Hoàn Chỉnh Trong 3 Giờ
+          </h3>
+<button aria-label="Tùy chọn khác" class="w-8 h-8 -mr-1.5 -mt-1 flex items-center justify-center text-tertiary hover:text-on-surface shrink-0">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+<div class="flex flex-col font-body-sm text-body-sm text-tertiary">
+<div class="flex items-center gap-1 truncate">
+<span class="">Lập Trình Di Động</span>
+<span class="material-symbols-outlined text-secondary text-[14px]">check_circle</span>
+</div>
+<span class="truncate">120 N lượt xem • 3 tháng trước</span>
+</div>
+</div>
+</article>
+<!-- Compact Video Result 2 -->
+<article class="flex gap-space-sm items-start cursor-pointer group">
+<!-- Thumbnail -->
+<div class="relative w-[42%] aspect-video rounded-lg overflow-hidden shrink-0 bg-surface-container-low shadow-sm">
+<img alt="Flutter Bloc vs Riverpod thumbnail" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="High tech split comparison graphic between Riverpod and Bloc architecture diagrams, stylized neon cyan and scarlet nodes on dark textured obsidian background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4A6NNGIGEv8SbHPcNTNbW69ayNRk9XRF46gMohw5ijoD4YGRSKyGCBa7gGUwsyw5r7WGh8tA7BXI-a8-1a-X8blQdF8X6yq1ZTtNBxtTLVg2I3KnUKFCSLq547dWOTCXlPlX4LcI3M3NqyJ1ChWpCeE5119DKcvgul8rkQMy9VwYSEV0ILicC7IVLRigL9OIOOA_jdmIClVU8iIUi0Iy-SVXW3hkzkzv0qrZFDnCQf1MlPfxSsd4">
+<span class="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-surface-container-lowest/90 text-on-surface font-label-sm text-label-sm">
+          18:40
+        </span>
+</div>
+<!-- Video Metadata -->
+<div class="flex-1 min-w-0 flex flex-col justify-between self-stretch">
+<div class="flex items-start justify-between gap-1">
+<h3 class="font-title-md text-title-md text-on-surface line-clamp-2 leading-snug">
+            Flutter Bloc State Management vs Riverpod - Nên Học Gì 2025?
+          </h3>
+<button aria-label="Tùy chọn khác" class="w-8 h-8 -mr-1.5 -mt-1 flex items-center justify-center text-tertiary hover:text-on-surface shrink-0">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+<div class="flex flex-col font-body-sm text-body-sm text-tertiary">
+<div class="flex items-center gap-1 truncate">
+<span class="">VTech Studio</span>
+</div>
+<span class="truncate">45 N lượt xem • 2 tuần trước</span>
+</div>
+</div>
+</article>
+<!-- Shorts Shelf Component -->
+<section class="bg-surface-container-low -mx-margin px-margin py-space-md flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-md bg-primary-container flex items-center justify-center text-on-primary-container shadow-sm">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">bolt</span>
+</div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface font-bold tracking-tight">Shorts</h2>
+</div>
+<button aria-label="Tùy chọn Shorts" class="text-tertiary hover:text-on-surface">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+<!-- Horizontal scroll of 9:16 Shorts cards -->
+<div class="flex gap-space-sm overflow-x-auto no-scrollbar pt-1 -mx-margin px-margin">
+<!-- Shorts Card 1 -->
+<div class="relative w-36 aspect-[9/16] rounded-xl overflow-hidden shrink-0 bg-surface-container-high group cursor-pointer shadow-md">
+<img alt="Top 5 packages Flutter cực đỉnh thumbnail" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Vertical portrait shot of energetic young software engineer pointing excitedly at clean glowing code on multiple curved monitors, sleek dark studio environment with red rim lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8q0Qu6PQ5rPlRYb6orvG7z0Ld_mlgDhD8CqBJmcAIrn8HXdbdjKQEwin9_TXZfLG6KADzTGuEzZjX7gLL7l2AbCfSwb2C6rwvwibLxXnUIoVxeZmgG3L6NdoEoIK_eZKYsOey5Xf5626yZfKJpGVF_WA12gRpSopzEq4z_O7aRHmn2hArP_hAaDe2-GwfC6jrRFJc0XpptkkFkMojmyWx6Kel3ZcbbrDmh4WIGDcHqBXWPdmvrig">
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-lowest via-surface-container-lowest/30 to-transparent flex flex-col justify-end p-2.5">
+<h4 class="font-label-md text-label-md text-on-surface font-semibold line-clamp-2 leading-snug drop-shadow-sm">
+              Top 5 packages Flutter cực đỉnh 🔥
+            </h4>
+<span class="font-label-sm text-label-sm text-tertiary mt-1">480 N lượt xem</span>
+</div>
+</div>
+<!-- Shorts Card 2 -->
+<div class="relative w-36 aspect-[9/16] rounded-xl overflow-hidden shrink-0 bg-surface-container-high group cursor-pointer shadow-md">
+<img alt="Tối ưu hiệu năng Flutter thumbnail" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Vertical mobile UI showing a 60 FPS performance profiling graph running smooth frame rates on smartphone screen with tech developer fingers swiping smoothly, dark neon aesthetic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBCHpfD_CMTOT2Y1rZm93gqrSKgL0vEP-YIjjJZFpp0YbU7Hu6vkJ0_UiT6th_OHRGM_a8mHtmBQsk5_8hA4ehlUWfZNCP607OCG33voosZHXNEw1qfFvc2mCTbLJ0bpCzFwfOOPC6MzfGyR3CBTOudVzqCO4I8R4ut1H5Pf3nX4FiJV5nXpa0NiPwYQS_8hGq_yEhKCb0J91MfjOnak-va9-sFieK-ZtIcGliVeKduHUICmFdARp4">
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-lowest via-surface-container-lowest/30 to-transparent flex flex-col justify-end p-2.5">
+<h4 class="font-label-md text-label-md text-on-surface font-semibold line-clamp-2 leading-snug drop-shadow-sm">
+              Tối ưu hiệu năng Flutter mượt 120Hz
+            </h4>
+<span class="font-label-sm text-label-sm text-tertiary mt-1">195 N lượt xem</span>
+</div>
+</div>
+<!-- Shorts Card 3 -->
+<div class="relative w-36 aspect-[9/16] rounded-xl overflow-hidden shrink-0 bg-surface-container-high group cursor-pointer shadow-md">
+<img alt="UI Challenge Flutter 60s thumbnail" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Fast-paced dynamic digital stopwatch glowing 60 seconds over an intricate animated mobile app layout built with flutter animations, neon cyan and red sparks" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBF-7DhyWKsmCDL96joHkWw52AO3o9F_hSWUUEGqVOhC9VTiaa8hA3jwrJ2rQIvJXgaC85dofCj1oSULAStxeDIQgMNRqSC71aLt2ETVadivefQi29zSm1S3mO0zX4sbmjboCc_BFl32YsvsVNF68tODvxrsbs2HF6XDrtU7AuWk71LWQwzrCEFLf6j5jUnQGRQb9aMbq515WlhoxKZtTyYPV_W6QcoDtYNUbf9SmbS-QK6b_6CkYc">
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-lowest via-surface-container-lowest/30 to-transparent flex flex-col justify-end p-2.5">
+<h4 class="font-label-md text-label-md text-on-surface font-semibold line-clamp-2 leading-snug drop-shadow-sm">
+              UI Challenge Flutter 60s: Thiết kế Feed
+            </h4>
+<span class="font-label-sm text-label-sm text-tertiary mt-1">82 N lượt xem</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Additional Video Results Below Shorts Shelf -->
+<article class="flex gap-space-sm items-start cursor-pointer group">
+<!-- Thumbnail -->
+<div class="relative w-[42%] aspect-video rounded-lg overflow-hidden shrink-0 bg-surface-container-low shadow-sm">
+<img alt="Flutter 3.24 Tính Năng Mới thumbnail" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Detailed graphic breakdown of Flutter 3.24 release features with sleek material design components and 3D geometric shapes rendered over dark carbon background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDQt-THBL8MaeeBsQV6CLq95EzgR6HAxWsnEIp9ggSqD64GJ87pvOcrhh5qkPFmXRRoBKefFnQPmk-8VIktnXN0Hs_UoPCL5nvUtSok0ib3OWchCPwKu9iorfvhFUfGexwbaw1GjC0r-OVpFkEcwFf_-bwDuUzKH_-r4ZKx4xcZBodg0rADi42ji8J9ZCHR5F8K_4ZDstoOZ1UpvLwyVQdUxDPezYzW-IPEEvYSQFbFHs086Z3ejLQ">
+<span class="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-surface-container-lowest/90 text-on-surface font-label-sm text-label-sm">
+          31:10
+        </span>
+</div>
+<!-- Video Metadata -->
+<div class="flex-1 min-w-0 flex flex-col justify-between self-stretch">
+<div class="flex items-start justify-between gap-1">
+<h3 class="font-title-md text-title-md text-on-surface line-clamp-2 leading-snug">
+            Có Gì Mới Trong Flutter Mới Nhất? Trải Nghiệm Impeller Engine Thực Tế
+          </h3>
+<button aria-label="Tùy chọn khác" class="w-8 h-8 -mr-1.5 -mt-1 flex items-center justify-center text-tertiary hover:text-on-surface shrink-0">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+<div class="flex flex-col font-body-sm text-body-sm text-tertiary">
+<div class="flex items-center gap-1 truncate">
+<span class="">Dev Cafe</span>
+<span class="material-symbols-outlined text-secondary text-[14px]">check_circle</span>
+</div>
+<span class="truncate">18 N lượt xem • 5 ngày trước</span>
+</div>
+</div>
+</article>
+<!-- Additional Video Result 4 -->
+<article class="flex gap-space-sm items-start cursor-pointer group">
+<!-- Thumbnail -->
+<div class="relative w-[42%] aspect-video rounded-lg overflow-hidden shrink-0 bg-surface-container-low shadow-sm">
+<img alt="Kết nối API và Firebase Flutter thumbnail" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="Stylized glowing isometric mobile database connected with Flutter icon, Firebase flame logo and REST API server lines, modern tech vector rendering" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBNx_Is9Qh0TK2UHxtNdJkPBEgbqzMhtVri6dy6Wn8svG_hn84AuqL1WIORlhAHInslN3GpY8P3SwshYetRhCBb_gLu8hD6RsgtsrETjXmidVnQ_ACzkcO-dzg3W--b5TKq4wDYhy-pbRToZ-n6_oAToLZiRIUS0hQcPbLEPxNsoRG6JbcsWSrRIE5y5Idlh49JRFkyHUXy2ZZ7sp0ma6DBvdBcyhn5yYt5XOHpvo_wLeoPTf5EP5k">
+<span class="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-surface-container-lowest/90 text-on-surface font-label-sm text-label-sm">
+          42:05
+        </span>
+</div>
+<!-- Video Metadata -->
+<div class="flex-1 min-w-0 flex flex-col justify-between self-stretch">
+<div class="flex items-start justify-between gap-1">
+<h3 class="font-title-md text-title-md text-on-surface line-clamp-2 leading-snug">
+            Khóa Học Flutter Thực Chiến: Tích Hợp REST API &amp; Firebase Authentication
+          </h3>
+<button aria-label="Tùy chọn khác" class="w-8 h-8 -mr-1.5 -mt-1 flex items-center justify-center text-tertiary hover:text-on-surface shrink-0">
+<span class="material-symbols-outlined text-[18px]">more_vert</span>
+</button>
+</div>
+<div class="flex flex-col font-body-sm text-body-sm text-tertiary">
+<div class="flex items-center gap-1 truncate">
+<span class="">Code Dạo Master</span>
+</div>
+<span class="truncate">67 N lượt xem • 1 tháng trước</span>
+</div>
+</div>
+</article>
+</div>
+</div>
+<script>
+  // Filter pill interaction
+  document.querySelectorAll('.chip-filter').forEach(chip => {
+    chip.addEventListener('click', function() {
+      document.querySelectorAll('.chip-filter').forEach(c => {
+        c.classList.remove('bg-inverse-surface', 'text-inverse-on-surface', 'font-semibold', 'shadow-sm');
+        c.classList.add('bg-surface-container-high', 'text-on-surface');
+      });
+      this.classList.remove('bg-surface-container-high', 'text-on-surface');
+      this.classList.add('bg-inverse-surface', 'text-inverse-on-surface', 'font-semibold', 'shadow-sm');
+    });
+  });
+
+  // Clear search input interaction
+  const clearBtn = document.getElementById('clear-search-btn');
+  const searchInput = document.getElementById('search-input');
+  if (clearBtn && searchInput) {
+    clearBtn.addEventListener('click', () => {
+      searchInput.value = '';
+      searchInput.focus();
+    });
+  }
+
+  // Channel Subscribe Button Toggle State
+  function toggleSubscribe(btn) {
+    const isSubscribed = btn.getAttribute('data-subscribed') === 'true';
+    if (!isSubscribed) {
+      btn.setAttribute('data-subscribed', 'true');
+      btn.classList.remove('bg-inverse-surface', 'text-inverse-on-surface');
+      btn.classList.add('bg-surface-container-highest', 'text-tertiary');
+      btn.innerHTML = '<span class="material-symbols-outlined text-[18px]">notifications_active</span><span>Đã đăng ký</span>';
+    } else {
+      btn.setAttribute('data-subscribed', 'false');
+      btn.classList.add('bg-inverse-surface', 'text-inverse-on-surface');
+      btn.classList.remove('bg-surface-container-highest', 'text-tertiary');
+      btn.innerHTML = '<span>Đăng ký</span>';
+    }
+  }
+</script></main>
+
+</body></html>
