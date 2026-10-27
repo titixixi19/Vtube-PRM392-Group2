@@ -177,10 +177,11 @@ void main() {
 
   testWidgets('mở từ dialog requireLogin: có nút X; bấm X quay lại, requireLogin trả về false', (tester) async {
     await pumpLoginScreen(tester, env, entry: LoginEntry.requireLoginDialog);
-    expect(find.byType(CloseButton), findsOneWidget);
+    expect(closeButton(), findsOneWidget);
+    expect(find.byType(CloseButtonIcon), findsOneWidget);
     expect(find.byType(BackButton), findsNothing);
 
-    await tester.tap(find.byType(CloseButton));
+    await tester.tap(closeButton());
     await tester.pumpAndSettle();
 
     expect(find.text(previousScreenLabel), findsOneWidget);
@@ -191,13 +192,26 @@ void main() {
     await pumpLoginScreen(tester, env, entry: LoginEntry.otherScreen);
 
     expect(find.byType(BackButton), findsOneWidget);
-    expect(find.byType(CloseButton), findsNothing);
+    expect(closeButton(), findsNothing);
   });
 
   testWidgets('mở thẳng: không có nút Back hay X', (tester) async {
     await pumpLoginScreen(tester, env);
 
     expect(find.byType(BackButton), findsNothing);
-    expect(find.byType(CloseButton), findsNothing);
+    expect(closeButton(), findsNothing);
+  });
+
+  testWidgets('nút X có tooltip tiếng Việt "Đóng", không còn "Close"', (tester) async {
+    await pumpLoginScreen(tester, env, entry: LoginEntry.requireLoginDialog);
+
+    expect(
+        tester.widget<Tooltip>(find.ancestor(of: find.byType(CloseButtonIcon), matching: find.byType(Tooltip))).message,
+        'Đóng');
+    expect(find.byTooltip('Close'), findsNothing);
+
+    await tester.longPress(closeButton());
+    await tester.pumpAndSettle();
+    expect(find.text('Đóng'), findsOneWidget, reason: 'Nhấn giữ thì hiện tooltip');
   });
 }

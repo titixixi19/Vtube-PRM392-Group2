@@ -165,6 +165,9 @@ Finder passwordField() => find.byType(TextFormField).at(1);
 Finder loginButton() => find.widgetWithText(FilledButton, 'Đăng nhập');
 Finder googleButton() => find.text('Tiếp tục với Google');
 
+/// Nút X (chỉ có khi mở từ dialog requireLogin), tìm theo tooltip tiếng Việt.
+Finder closeButton() => find.byTooltip('Đóng');
+
 String fieldText(WidgetTester tester, Finder field) => tester.widget<TextFormField>(field).controller!.text;
 
 EditableText editableOf(WidgetTester tester, Finder field) =>

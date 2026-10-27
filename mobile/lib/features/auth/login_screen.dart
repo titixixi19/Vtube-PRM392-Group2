@@ -108,7 +108,16 @@ class _LoginScreenState extends State<LoginScreen> {
       canPop: !_loading,
       child: Scaffold(
         // Từ dialog: nút X đóng màn (requireLogin trả về false). Chỗ khác: nút Back mặc định.
-        appBar: AppBar(leading: _fromDialog ? const CloseButton() : null),
+        // CloseButton không cho đổi tooltip (mặc định "Close") nên tự dựng; maybePop vẫn tôn trọng PopScope.
+        appBar: AppBar(
+          leading: _fromDialog
+              ? IconButton(
+                  icon: const CloseButtonIcon(),
+                  tooltip: 'Đóng',
+                  onPressed: () => Navigator.maybePop(context),
+                )
+              : null,
+        ),
         body: SafeArea(
           top: false,
           child: ListView(
