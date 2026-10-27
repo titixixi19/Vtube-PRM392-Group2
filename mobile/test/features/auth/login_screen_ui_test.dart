@@ -179,7 +179,7 @@ void main() {
     await pumpLoginScreen(tester, env, entry: LoginEntry.requireLoginDialog);
     expect(closeButton(), findsOneWidget);
     expect(find.byType(CloseButtonIcon), findsOneWidget);
-    expect(find.byType(BackButton), findsNothing);
+    expect(backButton(), findsNothing);
 
     await tester.tap(closeButton());
     await tester.pumpAndSettle();
@@ -188,18 +188,34 @@ void main() {
     expect(find.text(requireLoginResult(false)), findsOneWidget);
   });
 
-  testWidgets('mở từ chỗ khác: nút Back thường, không có nút X', (tester) async {
+  testWidgets('mở từ chỗ khác: nút Back thường, không có nút X; bấm Back quay lại màn trước', (tester) async {
     await pumpLoginScreen(tester, env, entry: LoginEntry.otherScreen);
 
-    expect(find.byType(BackButton), findsOneWidget);
+    expect(backButton(), findsOneWidget);
+    expect(find.byType(BackButtonIcon), findsOneWidget);
     expect(closeButton(), findsNothing);
+
+    await tester.tap(backButton());
+    await tester.pumpAndSettle();
+    expect(find.text(previousScreenLabel), findsOneWidget);
   });
 
   testWidgets('mở thẳng: không có nút Back hay X', (tester) async {
     await pumpLoginScreen(tester, env);
 
-    expect(find.byType(BackButton), findsNothing);
+    expect(backButton(), findsNothing);
+    expect(find.byType(BackButtonIcon), findsNothing);
     expect(closeButton(), findsNothing);
+  });
+
+  testWidgets('nút Back có tooltip tiếng Việt "Quay lại", không còn "Back"', (tester) async {
+    await pumpLoginScreen(tester, env, entry: LoginEntry.otherScreen);
+
+    expect(find.byTooltip('Back'), findsNothing);
+
+    await tester.longPress(backButton());
+    await tester.pumpAndSettle();
+    expect(find.text('Quay lại'), findsOneWidget, reason: 'Nhấn giữ thì hiện tooltip');
   });
 
   testWidgets('nút X có tooltip tiếng Việt "Đóng", không còn "Close"', (tester) async {

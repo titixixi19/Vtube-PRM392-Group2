@@ -101,22 +101,24 @@ class _LoginScreenState extends State<LoginScreen> {
     if (sent == true && mounted) showSnack(context, 'Đã gửi hướng dẫn tới email');
   }
 
+  Widget _leadingButton(Widget icon, String tooltip) =>
+      IconButton(icon: icon, tooltip: tooltip, onPressed: () => Navigator.maybePop(context));
+
   @override
   Widget build(BuildContext context) {
     // Đang gửi thì chặn Back: nếu rời màn lúc này, đăng nhập vẫn thành công ngầm sau đó.
     return PopScope(
       canPop: !_loading,
       child: Scaffold(
-        // Từ dialog: nút X đóng màn (requireLogin trả về false). Chỗ khác: nút Back mặc định.
-        // CloseButton không cho đổi tooltip (mặc định "Close") nên tự dựng; maybePop vẫn tôn trọng PopScope.
+        // Từ dialog: nút X đóng màn (requireLogin trả về false). Chỗ khác: nút Back nếu có màn phía sau.
+        // CloseButton/BackButton không cho đổi tooltip (mặc định "Close"/"Back") nên tự dựng;
+        // maybePop vẫn tôn trọng PopScope.
         appBar: AppBar(
           leading: _fromDialog
-              ? IconButton(
-                  icon: const CloseButtonIcon(),
-                  tooltip: 'Đóng',
-                  onPressed: () => Navigator.maybePop(context),
-                )
-              : null,
+              ? _leadingButton(const CloseButtonIcon(), 'Đóng')
+              : (ModalRoute.of(context)?.impliesAppBarDismissal ?? false)
+                  ? _leadingButton(const BackButtonIcon(), 'Quay lại')
+                  : null,
         ),
         body: SafeArea(
           top: false,

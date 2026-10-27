@@ -168,6 +168,9 @@ Finder googleButton() => find.text('Tiếp tục với Google');
 /// Nút X (chỉ có khi mở từ dialog requireLogin), tìm theo tooltip tiếng Việt.
 Finder closeButton() => find.byTooltip('Đóng');
 
+/// Nút Back (khi có màn phía sau mà không mở từ dialog), tìm theo tooltip tiếng Việt.
+Finder backButton() => find.byTooltip('Quay lại');
+
 String fieldText(WidgetTester tester, Finder field) => tester.widget<TextFormField>(field).controller!.text;
 
 EditableText editableOf(WidgetTester tester, Finder field) =>
