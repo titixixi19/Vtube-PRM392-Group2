@@ -172,7 +172,7 @@ void main() {
     await tester.tap(find.text('Đăng ký ngay'));
     await tester.pumpAndSettle();
 
-    expect(find.text(registerLabel), findsOneWidget);
+    expect(find.text('Tạo tài khoản'), findsOneWidget); // tiêu đề màn Đăng ký
   });
 
   testWidgets('có nút Back khi mở từ màn khác, không có khi mở thẳng', (tester) async {
