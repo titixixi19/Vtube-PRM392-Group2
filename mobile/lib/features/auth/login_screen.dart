@@ -16,7 +16,9 @@ import 'widgets/google_mark.dart';
 /// API: AuthProvider.login(email, password)  ->  POST /api/auth/login
 /// Thiết kế: design/stitch/2._ng_nh_p/ (bỏ 2 khối "Bảo mật tài khoản" và "Mã hóa SSL").
 ///
-/// Thành công: mở từ màn khác (vd. dialog requireLogin) -> quay lại màn đó; không có màn trước -> Trang chủ.
+/// Điều hướng (docs/tasks/NGUOI-1.md):
+///   - Mở từ dialog requireLogin (AppRoutes.loginFromDialog): có nút X; đăng nhập xong quay lại màn đã mở dialog.
+///   - Mở từ chỗ khác (AppRoutes.login, vd. tab Bạn): đăng nhập xong về Trang chủ.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -53,6 +55,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _onChanged() => setState(() {});
 
+  bool get _fromDialog =>
+      GoRouterState.of(context).uri.queryParameters[AppRoutes.loginFromParam] == AppRoutes.loginFromDialogValue;
+
   bool get _formValid =>
       AuthValidators.email(_email.text) == null && AuthValidators.loginPassword(_password.text) == null;
 
@@ -74,8 +79,8 @@ class _LoginScreenState extends State<LoginScreen> {
       await context.read<AuthProvider>().login(email, password);
       if (!mounted) return;
       if (successMessage != null) showSnack(context, successMessage);
-      if (context.canPop()) {
-        context.pop();
+      if (_fromDialog && context.canPop()) {
+        context.pop(); // requireLogin nhận kết quả đã đăng nhập
       } else {
         context.go(AppRoutes.home);
       }
@@ -102,7 +107,8 @@ class _LoginScreenState extends State<LoginScreen> {
     return PopScope(
       canPop: !_loading,
       child: Scaffold(
-        appBar: AppBar(),
+        // Từ dialog: nút X đóng màn (requireLogin trả về false). Chỗ khác: nút Back mặc định.
+        appBar: AppBar(leading: _fromDialog ? const CloseButton() : null),
         body: SafeArea(
           top: false,
           child: ListView(

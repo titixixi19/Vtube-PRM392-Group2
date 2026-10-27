@@ -101,20 +101,20 @@ void main() {
 
     testWidgets('đang gửi thì Back không rời màn (tránh đăng nhập ngầm), gửi xong mới quay lại', (tester) async {
       env.service.hold = Completer<void>();
-      await pumpLoginScreen(tester, env, fromPreviousScreen: true);
+      await pumpLoginScreen(tester, env, entry: LoginEntry.requireLoginDialog);
       await tester.enterText(emailField(), demoEmail);
       await tester.enterText(passwordField(), demoPassword);
       await tester.tap(loginButton());
       await tester.pump();
 
-      await tester.tap(find.byType(BackButton));
+      await tester.tap(find.byType(CloseButton));
       await tester.pump();
       expect(find.text('để tiếp tục với VTube'), findsOneWidget, reason: 'Vẫn ở màn Đăng nhập');
 
       env.service.hold!.complete();
       await tester.pumpAndSettle();
       expect(env.auth.isLoggedIn, isTrue);
-      expect(find.text(previousScreenLabel), findsOneWidget);
+      expect(find.text(requireLoginResult(true)), findsOneWidget);
     });
 
     testWidgets('form không hợp lệ thì không gọi API', (tester) async {
@@ -157,8 +157,9 @@ void main() {
       expect(find.text(homeLabel), findsOneWidget);
     });
 
-    testWidgets('mở từ màn khác (requireLogin): đăng nhập xong quay lại đúng màn đó', (tester) async {
-      await pumpLoginScreen(tester, env, fromPreviousScreen: true);
+    testWidgets('mở từ dialog requireLogin: đăng nhập xong quay lại đúng màn đó, requireLogin trả về true',
+        (tester) async {
+      await pumpLoginScreen(tester, env, entry: LoginEntry.requireLoginDialog);
 
       await tester.enterText(emailField(), demoEmail);
       await tester.enterText(passwordField(), demoPassword);
@@ -167,8 +168,31 @@ void main() {
 
       expect(env.auth.isLoggedIn, isTrue);
       expect(find.text(previousScreenLabel), findsOneWidget);
+      expect(find.text(requireLoginResult(true)), findsOneWidget);
       expect(find.text(homeLabel), findsNothing);
-      expect(loginButton(), findsNothing);
+    });
+
+    testWidgets('mở từ chỗ khác (vd. tab Bạn): đăng nhập xong về Trang chủ (nghiệm thu 3)', (tester) async {
+      await pumpLoginScreen(tester, env, entry: LoginEntry.otherScreen);
+
+      await tester.enterText(emailField(), demoEmail);
+      await tester.enterText(passwordField(), demoPassword);
+      await tester.tap(loginButton());
+      await tester.pumpAndSettle();
+
+      expect(env.auth.isLoggedIn, isTrue);
+      expect(find.text(homeLabel), findsOneWidget);
+      expect(find.text(previousScreenLabel), findsNothing);
+    });
+
+    testWidgets('Tiếp tục với Google khi mở từ dialog: cũng quay lại màn đã mở dialog', (tester) async {
+      await pumpLoginScreen(tester, env, entry: LoginEntry.requireLoginDialog);
+
+      await tester.tap(googleButton());
+      await tester.pumpAndSettle();
+
+      expect(find.text(requireLoginResult(true)), findsOneWidget);
+      expect(find.text(homeLabel), findsNothing);
     });
 
     testWidgets('Enter ở ô Mật khẩu gửi form với đúng dữ liệu đã nhập', (tester) async {

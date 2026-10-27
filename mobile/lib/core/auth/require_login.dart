@@ -26,7 +26,8 @@ Future<bool> requireLogin(BuildContext context, {String title = 'Đăng nhập �
     ),
   );
   if (go == true && context.mounted) {
-    await context.push(AppRoutes.login);
+    // Kèm cờ "từ dialog" để màn Đăng nhập quay lại đây thay vì về Trang chủ.
+    await context.push(AppRoutes.loginFromDialog);
   }
   return context.mounted && context.read<AuthProvider>().isLoggedIn;
 }
