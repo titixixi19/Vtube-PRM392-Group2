@@ -175,12 +175,29 @@ void main() {
     expect(find.text('Tạo tài khoản'), findsOneWidget); // tiêu đề màn Đăng ký
   });
 
-  testWidgets('có nút Back khi mở từ màn khác, không có khi mở thẳng', (tester) async {
-    await pumpLoginScreen(tester, env);
+  testWidgets('mở từ dialog requireLogin: có nút X; bấm X quay lại, requireLogin trả về false', (tester) async {
+    await pumpLoginScreen(tester, env, entry: LoginEntry.requireLoginDialog);
+    expect(find.byType(CloseButton), findsOneWidget);
     expect(find.byType(BackButton), findsNothing);
 
-    final env2 = AuthTestEnv();
-    await pumpLoginScreen(tester, env2, fromPreviousScreen: true);
+    await tester.tap(find.byType(CloseButton));
+    await tester.pumpAndSettle();
+
+    expect(find.text(previousScreenLabel), findsOneWidget);
+    expect(find.text(requireLoginResult(false)), findsOneWidget);
+  });
+
+  testWidgets('mở từ chỗ khác: nút Back thường, không có nút X', (tester) async {
+    await pumpLoginScreen(tester, env, entry: LoginEntry.otherScreen);
+
     expect(find.byType(BackButton), findsOneWidget);
+    expect(find.byType(CloseButton), findsNothing);
+  });
+
+  testWidgets('mở thẳng: không có nút Back hay X', (tester) async {
+    await pumpLoginScreen(tester, env);
+
+    expect(find.byType(BackButton), findsNothing);
+    expect(find.byType(CloseButton), findsNothing);
   });
 }
