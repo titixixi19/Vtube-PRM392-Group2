@@ -22,6 +22,10 @@ class SplashScreen extends StatefulWidget {
 
   static const minDuration = Duration(milliseconds: 1500);
 
+  /// Mỗi lần bấm "Thử lại" hiện vòng quay ít nhất chừng này: mất mạng hẳn thì lỗi về ngay,
+  /// nếu báo lại tức thì người dùng tưởng nút không ăn.
+  static const retryMinDuration = Duration(milliseconds: 800);
+
   @override
   State<SplashScreen> createState() => _SplashScreenState();
 }
@@ -50,7 +54,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     super.dispose();
   }
 
-  Future<void> _start({Duration minDuration = Duration.zero}) async {
+  Future<void> _start({required Duration minDuration}) async {
     final results = await Future.wait([_connect(), Future<bool>.delayed(minDuration, () => true)]);
     if (!mounted) return;
     if (results.first) {
@@ -62,7 +66,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   void _retry() {
     setState(() => _offline = false);
-    _start();
+    _start(minDuration: SplashScreen.retryMinDuration);
   }
 
   /// true: kết nối được backend (kể cả khi backend trả lỗi). false: mất mạng.

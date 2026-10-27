@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vtube/app/theme.dart';
 
 import 'auth_test_helpers.dart';
 import 'splash_test_helpers.dart';
@@ -68,7 +71,7 @@ void main() {
     expect(find.text('VTube', findRichText: true), findsOneWidget, reason: 'Vẫn ở màn Splash');
   });
 
-  testWidgets('bấm Thử lại khi vẫn mất mạng: hiện vòng quay trong lúc thử rồi báo lại', (tester) async {
+  testWidgets('bấm Thử lại khi vẫn mất mạng: vòng quay hiện đủ 0,8 giây rồi mới báo lại (không chớp)', (tester) async {
     final env = SplashTestEnv()..videos.error = networkError;
     await pumpSplash(tester, env);
     await passMinDuration(tester);
@@ -78,9 +81,38 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     expect(retryButton(), findsNothing);
 
-    await tester.pump(const Duration(milliseconds: 1)); // lần thử lại không giữ 1,5 giây
+    // Lỗi mạng về ngay nhưng vẫn giữ vòng quay để người dùng thấy app đã thử.
+    await tester.pump(const Duration(milliseconds: 700));
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(env.videos.categoriesCalls, 2);
+
+    await tester.pump(const Duration(milliseconds: 100)); // đủ 800 ms, ngắn hơn 1,5 giây của lần mở đầu
     await tester.pump();
     expect(find.text('Không có kết nối mạng'), findsOneWidget);
-    expect(env.videos.categoriesCalls, 2);
+  });
+
+  test('nền khởi động gốc (Android, iOS) cùng màu nền tối của Splash, không chớp trắng', () {
+    String read(String path) => File(path).readAsStringSync();
+    final hex = AppColors.background.toARGB32().toRadixString(16).toUpperCase();
+    expect(
+        read('android/app/src/main/res/values/colors.xml'), contains('<color name="splash_background">#$hex</color>'));
+    for (final path in [
+      'android/app/src/main/res/drawable/launch_background.xml',
+      'android/app/src/main/res/drawable-v21/launch_background.xml',
+    ]) {
+      expect(read(path), contains('@color/splash_background'), reason: path);
+    }
+    for (final path in [
+      'android/app/src/main/res/values/styles.xml',
+      'android/app/src/main/res/values-night/styles.xml',
+      'android/app/src/main/res/values-v31/styles.xml',
+      'android/app/src/main/res/values-night-v31/styles.xml',
+    ]) {
+      expect(read(path), isNot(contains('?android:colorBackground')), reason: path);
+    }
+    final ios = read('ios/Runner/Base.lproj/LaunchScreen.storyboard');
+    expect(ios, isNot(contains('<color key="backgroundColor" red="1" green="1" blue="1"')));
+    final c = AppColors.background.r.toStringAsFixed(7); // 0x13 / 255 = 0.0745098
+    expect(ios, contains('red="$c'));
   });
 }
