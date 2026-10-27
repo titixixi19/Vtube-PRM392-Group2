@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vtube/features/auth/widgets/auth_text_field.dart';
 
 import 'auth_test_helpers.dart';
 
@@ -21,8 +22,9 @@ void main() {
     for (final label in ['Họ và tên', 'Tên kênh', 'Handle', 'Địa chỉ Email', 'Mật khẩu', 'Xác nhận mật khẩu']) {
       expect(authField(label), findsOneWidget, reason: label);
     }
-    expect(find.text('Bắt buộc'), findsOneWidget);
-    expect(find.text('Tối thiểu 8 ký tự'), findsOneWidget);
+    // Mọi ô đều bắt buộc nên không gắn nhãn "Bắt buộc" riêng cho một ô (dễ hiểu nhầm ô khác không bắt buộc).
+    expect(find.text('Bắt buộc'), findsNothing);
+    expect(find.text('Ít nhất 8 ký tự, gồm chữ và số'), findsOneWidget);
     expect(find.byType(Checkbox), findsOneWidget);
     expect(find.textContaining('Điều khoản dịch vụ', findRichText: true), findsOneWidget);
     expect(registerButton(), findsOneWidget);
@@ -46,7 +48,15 @@ void main() {
     expect(tester.widget<TextField>(channelInput).decoration!.prefixText, isNull);
   });
 
-  testWidgets('chưa tick điều khoản: nút Đăng ký mờ và không bấm được', (tester) async {
+  testWidgets('ô Handle không dùng icon "@" (tránh hiện "@ @ten" cùng tiền tố)', (tester) async {
+    await pumpRegisterScreen(tester, env);
+
+    expect(find.descendant(of: authField('Handle'), matching: find.byIcon(Icons.alternate_email)), findsNothing);
+    expect(
+        find.descendant(of: authField('Handle'), matching: find.byIcon(Icons.account_circle_outlined)), findsOneWidget);
+  });
+
+  testWidgets('chưa tick điều khoản: nút Đăng ký mờ nhưng vẫn bấm được; tick thì rõ', (tester) async {
     await pumpRegisterScreen(tester, env);
     double opacity() => tester
         .widget<AnimatedOpacity>(find.ancestor(of: registerButton(), matching: find.byType(AnimatedOpacity)))
@@ -54,12 +64,38 @@ void main() {
     bool enabled() => tester.widget<FilledButton>(registerButton()).enabled;
 
     expect(opacity(), 0.5);
-    expect(enabled(), isFalse);
+    expect(enabled(), isTrue, reason: 'Bấm được để báo lý do thay vì im lặng');
 
     await tapVisible(tester, find.byType(Checkbox));
     await tester.pump();
     expect(opacity(), 1);
     expect(enabled(), isTrue);
+  });
+
+  testWidgets('chưa tick điều khoản mà bấm Đăng ký: hiện lời nhắc', (tester) async {
+    await pumpRegisterScreen(tester, env);
+    await fillRegisterForm(tester, agree: false);
+
+    await tapVisible(tester, registerButton());
+    await tester.pump();
+
+    expect(find.text('Vui lòng đồng ý Điều khoản dịch vụ và Chính sách quyền riêng tư'), findsOneWidget);
+  });
+
+  testWidgets('gõ phím không dựng lại cả form (chỉ phần cần đổi)', (tester) async {
+    await pumpRegisterScreen(tester, env);
+    await tester.enterText(authField('Họ và tên'), 'T'); // ký tự đầu: đổi trạng thái "đã nhập dở" -> dựng lại 1 lần
+    await tester.pump();
+    AuthTextField emailWidget() =>
+        tester.widget<AuthTextField>(find.byWidgetPredicate((w) => w is AuthTextField && w.label == 'Địa chỉ Email'));
+    final before = emailWidget();
+
+    await tester.enterText(authField('Họ và tên'), 'Trần');
+    await tester.enterText(authField('Mật khẩu'), 'abc12345');
+    await tester.pump();
+
+    expect(identical(emailWidget(), before), isTrue);
+    expect(find.text('Độ mạnh: Trung bình'), findsOneWidget, reason: 'Thanh độ mạnh vẫn cập nhật theo ký tự');
   });
 
   testWidgets('chọn ảnh đại diện: bottom sheet 2 lựa chọn, xem trước ảnh, có thể xóa', (tester) async {

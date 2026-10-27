@@ -82,10 +82,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   bool get _dirty => _avatar != null || _controllers.any((c) => c.text.isNotEmpty);
 
+  // Giá trị _dirty ở lần build gần nhất. Chỉ build lại cả màn khi nó đổi (PopScope cần biết),
+  // không build lại theo từng ký tự; thanh độ mạnh mật khẩu tự nghe ô Mật khẩu.
+  bool _builtDirty = false;
+
   @override
   void initState() {
     super.initState();
-    // Vẽ lại theo từng ký tự: thanh độ mạnh mật khẩu và trạng thái "đã nhập dở" của PopScope.
     for (final c in _controllers) {
       c.addListener(_onChanged);
     }
@@ -100,7 +103,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  void _onChanged() => setState(() {});
+  void _onChanged() {
+    if (_dirty != _builtDirty) setState(() {});
+  }
 
   void _onNameChanged(String value) {
     if (!_channelEdited) _channel.text = value;
@@ -108,10 +113,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   void _onHandleChanged(String value) {
     _handleDebounce?.cancel();
-    setState(() {
-      _handleError = null;
-      _handleStatus = _HandleStatus.idle;
-    });
+    if (_handleError != null || _handleStatus != _HandleStatus.idle) {
+      setState(() {
+        _handleError = null;
+        _handleStatus = _HandleStatus.idle;
+      });
+    }
     if (AuthValidators.handle(value) != null) return;
     _handleDebounce = Timer(const Duration(milliseconds: 500), () => _checkHandle(value.trim()));
   }
@@ -188,6 +195,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     // Handle trùng đã làm ô Handle báo lỗi (errorText) nên validate() trả về false.
     if (!_formKey.currentState!.validate()) {
       _scrollToFirstError();
+      return;
+    }
+    // Nút mờ nhưng vẫn bấm được khi chưa tick, để báo lý do thay vì im lặng.
+    if (!_agreed) {
+      showSnack(context, 'Vui lòng đồng ý Điều khoản dịch vụ và Chính sách quyền riêng tư');
       return;
     }
     setState(() => _loading = true);
@@ -297,6 +309,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    _builtDirty = _dirty;
     return PopScope(
       // Đang gửi thì chặn hẳn Back: nếu rời màn lúc này, tài khoản vẫn được tạo và đăng nhập ngầm.
       canPop: !_loading && (!_dirty || _registered),
@@ -367,7 +380,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         key: _nameKey,
         child: AuthTextField(
           label: 'Họ và tên',
-          labelTrailing: const Text('Bắt buộc'),
           hint: 'Ví dụ: Nguyễn Văn An',
           icon: Icons.badge_outlined,
           controller: _name,
@@ -405,7 +417,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           },
           hint: 'ten.kenh_cua_ban',
           prefixText: '@',
-          icon: Icons.alternate_email,
+          // Không dùng icon "@" vì ô đã có tiền tố @ (thành "@ @ten").
+          icon: Icons.account_circle_outlined,
           controller: _handle,
           enabled: !_loading,
           textInputAction: TextInputAction.next,
@@ -443,7 +456,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           AuthTextField(
             label: 'Mật khẩu',
-            labelTrailing: const Text('Tối thiểu 8 ký tự', style: TextStyle(color: AppColors.link)),
+            labelTrailing: const Text('Ít nhất 8 ký tự, gồm chữ và số', style: TextStyle(color: AppColors.link)),
             hint: 'Nhập mật khẩu an toàn',
             icon: Icons.lock_outline,
             controller: _password,
@@ -458,7 +471,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
               if (confirm != null && confirm.hasError) confirm.validate();
             },
           ),
-          PasswordStrengthBar(strength: AuthValidators.passwordStrength(_password.text)),
+          ListenableBuilder(
+            listenable: _password,
+            builder: (_, __) => PasswordStrengthBar(strength: AuthValidators.passwordStrength(_password.text)),
+          ),
         ]),
       ),
       gap,
@@ -474,9 +490,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           enabled: !_loading,
           textInputAction: TextInputAction.done,
           validator: (v) => AuthValidators.confirmPassword(v, _password.text),
-          onFieldSubmitted: (_) {
-            if (_agreed) _submit();
-          },
+          onFieldSubmitted: (_) => _submit(),
         ),
       ),
     ];
@@ -485,11 +499,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _buildSubmitButton() {
     final onAccent = Theme.of(context).colorScheme.onPrimary;
     return AnimatedOpacity(
-      // Chưa đồng ý điều khoản -> nút mờ và không bấm được.
+      // Chưa đồng ý điều khoản -> nút mờ; bấm vẫn kiểm tra form và nhắc tick điều khoản.
       opacity: _agreed || _loading ? 1 : 0.5,
       duration: const Duration(milliseconds: 150),
       child: FilledButton(
-        onPressed: _agreed && !_loading ? _submit : null,
+        onPressed: _loading ? null : _submit,
         style: FilledButton.styleFrom(
           disabledBackgroundColor: AppColors.accent,
           disabledForegroundColor: onAccent,

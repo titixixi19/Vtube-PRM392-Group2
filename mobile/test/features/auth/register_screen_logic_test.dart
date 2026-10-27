@@ -146,6 +146,33 @@ void main() {
       expect(env.upload.uploads, isEmpty);
     });
 
+    testWidgets('chưa tick điều khoản: không upload, không gọi đăng ký (kể cả Enter ở ô cuối)', (tester) async {
+      await pumpRegisterScreen(tester, env);
+      await fillRegisterForm(tester, agree: false);
+
+      await tapVisible(tester, registerButton());
+      await tester.pumpAndSettle();
+      await tester.showKeyboard(authField('Xác nhận mật khẩu'));
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      expect(env.service.registerCalls, isEmpty);
+      expect(env.upload.uploads, isEmpty);
+      expect(env.auth.isLoggedIn, isFalse);
+    });
+
+    testWidgets('chưa tick và form còn lỗi: báo lỗi dưới ô trước, chưa nhắc điều khoản', (tester) async {
+      await pumpRegisterScreen(tester, env);
+      await fillRegisterForm(tester, password: 'matkhau1', confirm: 'matkhau2', agree: false);
+
+      await tapVisible(tester, registerButton());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Mật khẩu xác nhận không khớp'), findsOneWidget);
+      expect(find.text('Vui lòng đồng ý Điều khoản dịch vụ và Chính sách quyền riêng tư'), findsNothing);
+      expect(env.service.registerCalls, isEmpty);
+    });
+
     testWidgets('handle đã có người dùng: chặn đăng ký, không gọi API', (tester) async {
       await pumpRegisterScreen(tester, env);
       await fillRegisterForm(tester, handle: takenHandle);
