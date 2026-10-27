@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
@@ -242,8 +244,44 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(env.service.registerCalls, hasLength(1));
-      expect(find.text('Handle @$takenHandle đã có người sử dụng'), findsOneWidget);
+      expect(errorUnder('Handle', 'Handle @$takenHandle đã có người sử dụng'), findsOneWidget);
+      expect(find.byType(SnackBar), findsNothing, reason: 'Lỗi 409 hiện dưới ô, không phải SnackBar');
       expect(env.auth.isLoggedIn, isFalse);
+    });
+
+    testWidgets('đang gửi thì Back không rời màn (tránh tạo tài khoản ngầm), gửi xong vào Trang chủ', (tester) async {
+      env.service.hold = Completer<void>();
+      await pumpRegisterScreen(tester, env, fromPreviousScreen: true);
+      await fillRegisterForm(tester);
+      await tapVisible(tester, registerButton());
+      await tester.pump();
+
+      await tester.tap(find.byType(BackButton));
+      await tester.pump();
+      expect(find.text('Hủy đăng ký?'), findsNothing, reason: 'Không hỏi hủy khi đang gửi');
+      expect(find.text('Tạo tài khoản'), findsOneWidget);
+
+      env.service.hold!.complete();
+      await tester.pumpAndSettle();
+      expect(env.auth.isLoggedIn, isTrue);
+      expect(find.text(homeLabel), findsOneWidget);
+    });
+
+    testWidgets('đọc file ảnh lỗi (không phải lỗi API): báo SnackBar, không gọi đăng ký', (tester) async {
+      env.upload.error = UnsupportedError('Không đọc được file');
+      await pumpRegisterScreen(tester, env);
+      await tester.tap(find.bySemanticsLabel('Chọn ảnh đại diện'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Chọn từ thư viện'));
+      await tester.pumpAndSettle();
+      await fillRegisterForm(tester);
+
+      await tapVisible(tester, registerButton());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Không tải được ảnh đại diện, hãy chọn ảnh khác'), findsOneWidget);
+      expect(env.service.registerCalls, isEmpty);
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('"Đã có tài khoản? Đăng nhập" khi đã nhập dở: hỏi lại rồi quay về màn Đăng nhập', (tester) async {

@@ -119,9 +119,13 @@ class FakeUploadService extends UploadService {
 
   final uploads = <(String, String)>[]; // (đường dẫn, type)
 
+  /// Gán để upload ném lỗi này (vd. lỗi đọc file, không phải ApiException).
+  Object? error;
+
   @override
   Future<UploadResult> upload(String filePath, {String type = 'image', onProgress, cancelToken}) async {
     uploads.add((filePath, type));
+    if (error != null) throw error!;
     return const UploadResult(uploadedAvatarUrl, 'avatar-1.png', 100);
   }
 }
@@ -231,6 +235,12 @@ Finder authField(String label) => find.descendant(
     );
 
 Finder registerButton() => find.widgetWithText(FilledButton, 'Đăng ký');
+
+/// Dòng lỗi [text] nằm đúng dưới ô có nhãn [label] (không phải ở SnackBar hay ô khác).
+Finder errorUnder(String label, String text) => find.descendant(
+      of: find.byWidgetPredicate((w) => w is AuthTextField && w.label == label),
+      matching: find.text(text),
+    );
 
 String fieldText(WidgetTester tester, Finder field) => tester.widget<TextFormField>(field).controller!.text;
 

@@ -147,16 +147,47 @@ void main() {
 
   testWidgets('bấm sai: cuộn lên ô lỗi đầu tiên', (tester) async {
     await pumpRegisterScreen(tester, env);
+    // Màn thấp hơn để form chắc chắn dài hơn màn hình.
+    tester.view.physicalSize = const Size(480 * 3, 640 * 3);
+    await tester.pumpAndSettle();
     // Điền đủ trừ Họ tên (ô đầu tiên, ở trên cùng).
     await fillRegisterForm(tester, name: '');
     await tester.enterText(authField('Tên kênh'), 'Kênh Bình');
 
-    await tapVisible(tester, registerButton());
+    await tester.ensureVisible(registerButton());
+    await tester.pumpAndSettle();
+    double nameTop() => tester.getTopLeft(authField('Họ và tên')).dy;
+    expect(nameTop(), lessThan(0), reason: 'Điều kiện đầu: ô Họ tên đã bị cuộn khuất khỏi màn hình');
+
+    await tester.tap(registerButton());
     await tester.pumpAndSettle();
 
-    expect(find.text('Vui lòng nhập họ tên'), findsOneWidget);
-    final nameTop = tester.getTopLeft(authField('Họ và tên')).dy;
-    expect(nameTop, inInclusiveRange(0, 900), reason: 'Ô Họ tên phải nằm trong màn hình');
+    expect(errorUnder('Họ và tên', 'Vui lòng nhập họ tên'), findsOneWidget);
+    expect(nameTop(), inInclusiveRange(0, 640), reason: 'Ô Họ tên phải được cuộn vào màn hình');
+  });
+
+  testWidgets('nhấn Tiếp ở ô Mật khẩu: focus sang ô Xác nhận, không dừng ở nút con mắt', (tester) async {
+    await pumpRegisterScreen(tester, env);
+
+    await tester.enterText(authField('Mật khẩu'), 'matkhau1');
+    await tester.testTextInput.receiveAction(TextInputAction.next);
+    await tester.pump();
+
+    expect(editableOf(tester, authField('Xác nhận mật khẩu')).focusNode.hasFocus, isTrue);
+  });
+
+  testWidgets('lỗi "không khớp" ở ô Xác nhận tự hết khi sửa Mật khẩu cho khớp', (tester) async {
+    await pumpRegisterScreen(tester, env);
+    await tester.enterText(authField('Mật khẩu'), 'matkhau1');
+    await tester.enterText(authField('Xác nhận mật khẩu'), 'matkhau12');
+    FocusManager.instance.primaryFocus?.unfocus(); // rời ô Xác nhận -> kiểm tra
+    await tester.pump();
+    expect(errorUnder('Xác nhận mật khẩu', 'Mật khẩu xác nhận không khớp'), findsOneWidget);
+
+    await tester.enterText(authField('Mật khẩu'), 'matkhau12');
+    await tester.pump();
+
+    expect(find.text('Mật khẩu xác nhận không khớp'), findsNothing);
   });
 
   testWidgets('đang gửi: hiện vòng quay và khóa các ô', (tester) async {
