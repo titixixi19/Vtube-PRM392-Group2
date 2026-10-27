@@ -63,6 +63,16 @@ class AuthTextField extends StatefulWidget {
 class _AuthTextFieldState extends State<AuthTextField> {
   late bool _hidden = widget.obscure;
 
+  // Nút con mắt vẫn bấm được nhưng bị bỏ qua khi nhấn "Tiếp" trên bàn phím,
+  // để focus đi thẳng sang ô kế tiếp thay vì dừng ở nút (làm ẩn bàn phím).
+  final _eyeFocus = FocusNode(skipTraversal: true);
+
+  @override
+  void dispose() {
+    _eyeFocus.dispose();
+    super.dispose();
+  }
+
   static final _iconColor = WidgetStateColor.resolveWith(
     (states) => states.contains(WidgetState.focused) ? AppColors.link : AppColors.textSecondary,
   );
@@ -71,6 +81,7 @@ class _AuthTextFieldState extends State<AuthTextField> {
   Widget build(BuildContext context) {
     final suffix = widget.obscure
         ? IconButton(
+            focusNode: _eyeFocus,
             tooltip: _hidden ? 'Hiện mật khẩu' : 'Ẩn mật khẩu',
             icon: Icon(_hidden ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20),
             color: _hidden ? AppColors.textSecondary : AppColors.link,

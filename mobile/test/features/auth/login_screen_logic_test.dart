@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vtube/core/network/api_exception.dart';
@@ -16,7 +19,22 @@ void main() {
     });
 
     test('báo lỗi khi sai định dạng', () {
-      for (final email in ['abc', 'demo@', '@vtube.vn', 'demo@vtube', 'demo vtube@vtube.vn', 'demo@@vtube.vn']) {
+      // Nhóm sau: backend (@Email) từ chối nên app phải chặn trước, tránh lỗi 400 khó hiểu.
+      for (final email in [
+        'abc',
+        'demo@',
+        '@vtube.vn',
+        'demo@vtube',
+        'demo vtube@vtube.vn',
+        'demo@@vtube.vn',
+        'demo.@vtube.vn',
+        '.demo@vtube.vn',
+        'de..mo@vtube.vn',
+        'demo@vt_ube.vn',
+        'demo@-vtube.vn',
+        'demo@vtube-.vn',
+        'demo@vtube..vn',
+      ]) {
         expect(AuthValidators.email(email), 'Email không đúng định dạng', reason: email);
       }
     });
@@ -80,6 +98,24 @@ void main() {
     late AuthTestEnv env;
 
     setUp(() => env = AuthTestEnv());
+
+    testWidgets('đang gửi thì Back không rời màn (tránh đăng nhập ngầm), gửi xong mới quay lại', (tester) async {
+      env.service.hold = Completer<void>();
+      await pumpLoginScreen(tester, env, fromPreviousScreen: true);
+      await tester.enterText(emailField(), demoEmail);
+      await tester.enterText(passwordField(), demoPassword);
+      await tester.tap(loginButton());
+      await tester.pump();
+
+      await tester.tap(find.byType(BackButton));
+      await tester.pump();
+      expect(find.text('để tiếp tục với VTube'), findsOneWidget, reason: 'Vẫn ở màn Đăng nhập');
+
+      env.service.hold!.complete();
+      await tester.pumpAndSettle();
+      expect(env.auth.isLoggedIn, isTrue);
+      expect(find.text(previousScreenLabel), findsOneWidget);
+    });
 
     testWidgets('form không hợp lệ thì không gọi API', (tester) async {
       await pumpLoginScreen(tester, env);
