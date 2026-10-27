@@ -36,10 +36,10 @@ String videoLabel(int id) => 'MÀN VIDEO $id';
 
 const networkError = ApiException('Không kết nối được máy chủ. Kiểm tra mạng hoặc backend.');
 
-Me accountUser({int subscribers = 1200}) => Me(
-      id: 1,
+Me accountUser({int id = 1, String name = accountName, int subscribers = 1200}) => Me(
+      id: id,
       email: accountEmail,
-      displayName: accountName,
+      displayName: name,
       createdAt: '2026-01-01T00:00:00Z',
       channel:
           ChannelBrief(id: accountChannelId, name: accountName, handle: accountHandle, subscriberCount: subscribers),
@@ -115,9 +115,13 @@ class FakeHistoryService extends HistoryService {
   @override
   Future<PageResult<HistoryItem>> list({String type = 'all', String? q, int page = 0, int size = 20}) async {
     sizes.add(size);
-    if (hold != null) await hold!.future;
-    if (error != null) throw error!;
-    return PageResult(items: items.take(size).toList(), page: page, size: size, hasMore: false);
+    // Chốt dữ liệu, lỗi và Completer tại lúc gọi, để mỗi request trả kết quả của riêng nó (dù xong muộn).
+    final result = items.take(size).toList();
+    final err = error;
+    final wait = hold;
+    if (wait != null) await wait.future;
+    if (err != null) throw err;
+    return PageResult(items: result, page: page, size: size, hasMore: false);
   }
 }
 

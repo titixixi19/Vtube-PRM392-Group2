@@ -275,17 +275,27 @@ void main() {
       expect(find.text(loginLabel), findsOneWidget);
     });
 
-    testWidgets('đổi tài khoản giữa chừng: kết quả tải muộn của tài khoản cũ không hiện ra', (tester) async {
-      env.history.hold = Completer<void>();
+    testWidgets('đổi tài khoản giữa chừng: kết quả tải muộn của tài khoản cũ không đè lên tài khoản mới',
+        (tester) async {
+      final slowA = Completer<void>();
+      env.history.hold = slowA; // lịch sử của tài khoản A về rất chậm
       await pumpAccount(tester, env, settle: false);
 
       await env.auth.logout();
-      await tester.pump();
-      env.history.hold!.complete();
+      env.history
+        ..hold = null
+        ..items = [sampleHistory(77)];
+      env.authService.user = accountUser(id: 2, name: 'Tài khoản B');
+      await env.signIn();
+      await tester.pumpAndSettle();
+      expect(find.text('Video số 77'), findsOneWidget);
+
+      slowA.complete(); // kết quả của A giờ mới về
       await tester.pumpAndSettle();
 
+      expect(find.text('Tài khoản B'), findsOneWidget);
+      expect(find.text('Video số 77'), findsOneWidget);
       expect(find.text('Video số 1'), findsNothing);
-      expect(find.text('Tận hưởng các video yêu thích'), findsOneWidget);
     });
 
     testWidgets('Video đã tải xuống, Tài khoản Google, Cài đặt: SnackBar giả lập', (tester) async {
