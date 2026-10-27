@@ -98,24 +98,29 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent),
-      body: SafeArea(
-        top: false,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-          children: [
-            const _Header(),
-            _buildCard(),
-            const SizedBox(height: 16),
-            _buildRegisterRow(),
-          ],
+    // Đang gửi thì chặn Back: nếu rời màn lúc này, đăng nhập vẫn thành công ngầm sau đó.
+    return PopScope(
+      canPop: !_loading,
+      child: Scaffold(
+        appBar: AppBar(),
+        body: SafeArea(
+          top: false,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            children: [
+              const _Header(),
+              _buildCard(),
+              const SizedBox(height: 16),
+              _buildRegisterRow(),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildCard() {
+    final onAccent = Theme.of(context).colorScheme.onPrimary;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(color: AppColors.surfaceLow, borderRadius: BorderRadius.circular(12)),
@@ -169,13 +174,13 @@ class _LoginScreenState extends State<LoginScreen> {
             onPressed: _loading ? null : _submit,
             style: FilledButton.styleFrom(
               disabledBackgroundColor: AppColors.accent,
-              disabledForegroundColor: Colors.white,
+              disabledForegroundColor: onAccent,
             ),
             child: _loading
-                ? const SizedBox(
+                ? SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    child: CircularProgressIndicator(strokeWidth: 2, color: onAccent),
                   )
                 : const Row(mainAxisSize: MainAxisSize.min, children: [
                     Text('Đăng nhập'),

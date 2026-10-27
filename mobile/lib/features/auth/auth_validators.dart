@@ -3,7 +3,11 @@
 class AuthValidators {
   AuthValidators._();
 
-  static final _emailRe = RegExp(r'^[\w.+-]+@[\w-]+(\.[\w-]+)+$');
+  // Chặt hơn @Email của backend để email nào qua được app thì server cũng nhận:
+  // phần trước @ không có dấu chấm ở đầu/cuối/liền nhau; tên miền chỉ gồm chữ, số, "-" (không ở đầu/cuối nhãn).
+  static final _emailRe = RegExp(
+    r'^[\w+-]+(\.[\w+-]+)*@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+$',
+  );
 
   static String? email(String? value) {
     final v = value?.trim() ?? '';
