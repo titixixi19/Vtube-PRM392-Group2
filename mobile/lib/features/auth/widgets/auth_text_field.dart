@@ -34,6 +34,9 @@ class AuthTextField extends StatefulWidget {
   /// Lỗi từ server (vd. 409 email đã dùng): hiện đè lên lỗi của validator và làm form không hợp lệ.
   final String? errorText;
 
+  /// Key của TextFormField bên trong, để màn hình gọi validate() riêng ô này.
+  final GlobalKey<FormFieldState<String>>? fieldKey;
+
   const AuthTextField({
     super.key,
     required this.label,
@@ -54,6 +57,7 @@ class AuthTextField extends StatefulWidget {
     this.prefixText,
     this.inputFormatters,
     this.errorText,
+    this.fieldKey,
   });
 
   @override
@@ -105,6 +109,7 @@ class _AuthTextFieldState extends State<AuthTextField> {
       ]),
       const SizedBox(height: 6),
       TextFormField(
+        key: widget.fieldKey,
         controller: widget.controller,
         focusNode: widget.focusNode,
         validator: widget.validator,

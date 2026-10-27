@@ -61,6 +61,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailKey = GlobalKey();
   final _passwordKey = GlobalKey();
   final _confirmKey = GlobalKey();
+  final _confirmField = GlobalKey<FormFieldState<String>>();
 
   Timer? _handleDebounce;
   _HandleStatus _handleStatus = _HandleStatus.idle;
@@ -192,7 +193,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _loading = true);
     try {
       final auth = context.read<AuthProvider>();
-      final avatarUrl = await _uploadAvatar();
+      final String? avatarUrl;
+      try {
+        avatarUrl = await _uploadAvatar();
+      } on ApiException {
+        rethrow;
+      } catch (_) {
+        // Lỗi đọc file ảnh (không phải lỗi API) -> báo gọn qua SnackBar như lỗi API.
+        throw const ApiException('Không tải được ảnh đại diện, hãy chọn ảnh khác');
+      }
       await auth.register(
         displayName: _name.text.trim(),
         channelName: _channel.text.trim(),
@@ -289,9 +298,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: !_dirty || _registered,
+      // Đang gửi thì chặn hẳn Back: nếu rời màn lúc này, tài khoản vẫn được tạo và đăng nhập ngầm.
+      canPop: !_loading && (!_dirty || _registered),
       onPopInvokedWithResult: (didPop, _) async {
-        if (didPop) return;
+        if (didPop || _loading) return;
         if (await _confirmDiscard() && context.mounted) context.pop();
       },
       child: Scaffold(
@@ -442,6 +452,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
             textInputAction: TextInputAction.next,
             autofillHints: const [AutofillHints.newPassword],
             validator: AuthValidators.registerPassword,
+            onChanged: (_) {
+              // Ô Xác nhận đang báo lỗi thì kiểm tra lại theo mật khẩu mới (vd. vừa sửa cho khớp).
+              final confirm = _confirmField.currentState;
+              if (confirm != null && confirm.hasError) confirm.validate();
+            },
           ),
           PasswordStrengthBar(strength: AuthValidators.passwordStrength(_password.text)),
         ]),
@@ -451,6 +466,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         key: _confirmKey,
         child: AuthTextField(
           label: 'Xác nhận mật khẩu',
+          fieldKey: _confirmField,
           hint: 'Nhập lại mật khẩu',
           icon: Icons.lock_reset,
           controller: _confirm,
@@ -467,6 +483,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _buildSubmitButton() {
+    final onAccent = Theme.of(context).colorScheme.onPrimary;
     return AnimatedOpacity(
       // Chưa đồng ý điều khoản -> nút mờ và không bấm được.
       opacity: _agreed || _loading ? 1 : 0.5,
@@ -475,13 +492,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         onPressed: _agreed && !_loading ? _submit : null,
         style: FilledButton.styleFrom(
           disabledBackgroundColor: AppColors.accent,
-          disabledForegroundColor: Colors.white,
+          disabledForegroundColor: onAccent,
         ),
         child: _loading
-            ? const SizedBox(
+            ? SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                child: CircularProgressIndicator(strokeWidth: 2, color: onAccent),
               )
             : const Row(mainAxisSize: MainAxisSize.min, children: [
                 Text('Đăng ký'),

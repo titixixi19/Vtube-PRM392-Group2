@@ -9,7 +9,7 @@ class AuthValidators {
     r'^[\w+-]+(\.[\w+-]+)*@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+$',
   );
   static final _handleRe = RegExp(r'^[a-z0-9._]{3,30}$');
-  static final _letterRe = RegExp(r'[A-Za-zÀ-ỹ]');
+  static final _letterRe = RegExp(r'\p{L}', unicode: true); // mọi chữ cái, kể cả có dấu tiếng Việt
   static final _digitRe = RegExp(r'\d');
 
   static String? email(String? value) {

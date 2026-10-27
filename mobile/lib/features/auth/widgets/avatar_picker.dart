@@ -53,7 +53,7 @@ class AvatarPicker extends StatelessWidget {
                     shape: BoxShape.circle,
                     border: Border.all(color: AppColors.background, width: 3),
                   ),
-                  child: const Icon(Icons.photo_camera, size: 16, color: Colors.white),
+                  child: Icon(Icons.photo_camera, size: 16, color: Theme.of(context).colorScheme.onPrimary),
                 ),
               ),
             ]),
