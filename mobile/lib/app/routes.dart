@@ -5,6 +5,12 @@ class AppRoutes {
   // Không có bottom nav
   static const splash = '/splash'; // Màn 1
   static const login = '/login'; // Màn 2
+
+  /// Màn 2 mở từ dialog requireLogin: đăng nhập xong (hoặc bấm X) quay lại màn đã mở dialog.
+  /// Mở bằng [login] từ chỗ khác thì đăng nhập xong về Trang chủ.
+  static const loginFromDialog = '$login?$loginFromParam=$loginFromDialogValue';
+  static const loginFromParam = 'from';
+  static const loginFromDialogValue = 'dialog';
   static const register = '/register'; // Màn 3
 
   // 4 tab có bottom nav (tab (+) Tạo mở bottom sheet, không phải route)
