@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vtube/app/routes.dart';
 import 'package:vtube/app/theme.dart';
 import 'package:vtube/core/auth/auth_provider.dart';
+import 'package:vtube/core/auth/require_login.dart';
 import 'package:vtube/core/network/api_client.dart';
 import 'package:vtube/core/network/api_exception.dart';
 import 'package:vtube/core/storage/token_storage.dart';
@@ -72,29 +73,64 @@ const previousScreenLabel = 'MÀN TRƯỚC';
 const homeLabel = 'TRANG CHỦ';
 const registerLabel = 'MÀN ĐĂNG KÝ';
 
-/// Dựng app tối giản quanh màn Đăng nhập.
-/// [fromPreviousScreen]: true -> mở bằng push từ một màn khác (giống dialog requireLogin);
-/// false -> mở thẳng, không có màn nào phía sau.
-Future<void> pumpLoginScreen(WidgetTester tester, AuthTestEnv env, {bool fromPreviousScreen = false}) async {
+/// Màn Đăng nhập được mở bằng cách nào.
+enum LoginEntry {
+  /// Mở thẳng, không có màn nào phía sau.
+  direct,
+
+  /// Khách bấm Like... -> dialog requireLogin (code thật) -> "Đăng nhập".
+  requireLoginDialog,
+
+  /// Mở từ chỗ khác bằng push(AppRoutes.login), vd. nút "Đăng nhập" ở tab Bạn.
+  otherScreen,
+}
+
+/// Dòng chữ màn trước hiện ra sau khi requireLogin trả kết quả.
+String requireLoginResult(bool loggedIn) => 'requireLogin: $loggedIn';
+
+/// Màn trước: một nút gọi requireLogin thật, một nút mở Đăng nhập trực tiếp.
+class _PreviousScreen extends StatefulWidget {
+  const _PreviousScreen();
+
+  @override
+  State<_PreviousScreen> createState() => _PreviousScreenState();
+}
+
+class _PreviousScreenState extends State<_PreviousScreen> {
+  String _result = '';
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Text(previousScreenLabel),
+          TextButton(
+            onPressed: () async {
+              final ok = await requireLogin(context);
+              if (mounted) setState(() => _result = requireLoginResult(ok));
+            },
+            child: const Text('THÍCH VIDEO'),
+          ),
+          TextButton(onPressed: () => context.push(AppRoutes.login), child: const Text('MỞ ĐĂNG NHẬP')),
+          Text(_result),
+        ]),
+      ),
+    );
+  }
+}
+
+/// Dựng app tối giản quanh màn Đăng nhập, mở theo [entry].
+Future<void> pumpLoginScreen(WidgetTester tester, AuthTestEnv env, {LoginEntry entry = LoginEntry.direct}) async {
   // Font trong test là ô vuông rộng hơn font thật, nên dùng khung 480 dp để chữ không bị tràn giả.
   tester.view.physicalSize = const Size(480 * 3, 900 * 3);
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
 
   final router = GoRouter(
-    initialLocation: fromPreviousScreen ? '/prev' : AppRoutes.login,
+    initialLocation: entry == LoginEntry.direct ? AppRoutes.login : '/prev',
     routes: [
-      GoRoute(
-        path: '/prev',
-        builder: (context, _) => Scaffold(
-          body: Center(
-            child: TextButton(
-              onPressed: () => context.push(AppRoutes.login),
-              child: const Text(previousScreenLabel),
-            ),
-          ),
-        ),
-      ),
+      GoRoute(path: '/prev', builder: (_, __) => const _PreviousScreen()),
       GoRoute(path: AppRoutes.login, builder: (_, __) => const LoginScreen()),
       GoRoute(path: AppRoutes.home, builder: (_, __) => const Scaffold(body: Text(homeLabel))),
       GoRoute(path: AppRoutes.register, builder: (_, __) => const Scaffold(body: Text(registerLabel))),
@@ -110,9 +146,17 @@ Future<void> pumpLoginScreen(WidgetTester tester, AuthTestEnv env, {bool fromPre
   );
   await tester.pumpAndSettle();
 
-  if (fromPreviousScreen) {
-    await tester.tap(find.text(previousScreenLabel));
-    await tester.pumpAndSettle();
+  switch (entry) {
+    case LoginEntry.direct:
+      break;
+    case LoginEntry.requireLoginDialog:
+      await tester.tap(find.text('THÍCH VIDEO'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.descendant(of: find.byType(AlertDialog), matching: find.text('Đăng nhập')));
+      await tester.pumpAndSettle();
+    case LoginEntry.otherScreen:
+      await tester.tap(find.text('MỞ ĐĂNG NHẬP'));
+      await tester.pumpAndSettle();
   }
 }
 
