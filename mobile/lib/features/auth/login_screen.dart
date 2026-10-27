@@ -37,13 +37,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordFocus = FocusNode();
   bool _loading = false;
 
-  @override
-  void initState() {
-    super.initState();
-    // Vẽ lại để cập nhật độ mờ của nút Đăng nhập theo từng ký tự.
-    _email.addListener(_onChanged);
-    _password.addListener(_onChanged);
-  }
+  // Gõ phím chỉ dựng lại nút Đăng nhập (độ mờ), không dựng lại cả màn.
+  late final _fields = Listenable.merge([_email, _password]);
 
   @override
   void dispose() {
@@ -52,8 +47,6 @@ class _LoginScreenState extends State<LoginScreen> {
     _passwordFocus.dispose();
     super.dispose();
   }
-
-  void _onChanged() => setState(() {});
 
   bool get _fromDialog =>
       GoRouterState.of(context).uri.queryParameters[AppRoutes.loginFromParam] == AppRoutes.loginFromDialogValue;
@@ -184,9 +177,13 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
         // Nút mờ khi form chưa hợp lệ nhưng vẫn bấm được, để hiện lỗi dưới từng ô.
-        AnimatedOpacity(
-          opacity: _formValid || _loading ? 1 : 0.5,
-          duration: const Duration(milliseconds: 150),
+        ListenableBuilder(
+          listenable: _fields,
+          builder: (context, child) => AnimatedOpacity(
+            opacity: _formValid || _loading ? 1 : 0.5,
+            duration: const Duration(milliseconds: 150),
+            child: child,
+          ),
           child: FilledButton(
             onPressed: _loading ? null : _submit,
             style: FilledButton.styleFrom(

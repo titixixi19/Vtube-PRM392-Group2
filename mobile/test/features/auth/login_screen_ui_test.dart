@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vtube/features/auth/widgets/auth_text_field.dart';
 
 import 'auth_test_helpers.dart';
 
@@ -51,6 +52,17 @@ void main() {
     await tester.enterText(passwordField(), demoPassword);
     await tester.pump();
     expect(opacity(), 1);
+  });
+
+  testWidgets('gõ phím chỉ dựng lại nút Đăng nhập, không dựng lại cả form', (tester) async {
+    await pumpLoginScreen(tester, env);
+    final emailWidget = tester.widget<AuthTextField>(find.byType(AuthTextField).first);
+
+    await tester.enterText(passwordField(), demoPassword);
+    await tester.pump();
+
+    // Màn cha build lại thì AuthTextField là đối tượng mới; giữ nguyên nghĩa là chỉ phần nút được dựng lại.
+    expect(identical(tester.widget<AuthTextField>(find.byType(AuthTextField).first), emailWidget), isTrue);
   });
 
   testWidgets('bấm Đăng nhập khi để trống: lỗi hiện dưới từng ô', (tester) async {
