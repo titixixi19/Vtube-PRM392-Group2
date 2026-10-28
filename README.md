@@ -9,7 +9,7 @@ App Flutter gồm 16 màn hình, chia cho 4 người, chạy trên backend Sprin
 | `docs/` | Tài liệu: API, database, luồng, quy ước, phân công |
 | `design/stitch/` | Thiết kế từ Google Stitch (mở `code.html` bằng trình duyệt để xem) |
 
-Tài liệu đặc tả chi tiết từng màn (bản online, có sơ đồ điều hướng): **Đặc tả màn hình VTube** trên Claude. Bản copy nằm ở `docs/DAC-TA-MAN-HINH.md`.
+Tài liệu đặc tả chi tiết từng màn: [`docs/DAC-TA-MAN-HINH.md`](docs/DAC-TA-MAN-HINH.md).
 
 ## Đọc gì trước?
 
