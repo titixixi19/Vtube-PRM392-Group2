@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vtube/core/network/api_exception.dart';
@@ -107,7 +106,7 @@ void main() {
       await tester.tap(loginButton());
       await tester.pump();
 
-      await tester.tap(find.byType(CloseButton));
+      await tester.tap(closeButton());
       await tester.pump();
       expect(find.text('để tiếp tục với VTube'), findsOneWidget, reason: 'Vẫn ở màn Đăng nhập');
 

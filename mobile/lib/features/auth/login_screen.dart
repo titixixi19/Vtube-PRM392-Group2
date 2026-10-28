@@ -37,13 +37,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordFocus = FocusNode();
   bool _loading = false;
 
-  @override
-  void initState() {
-    super.initState();
-    // Vẽ lại để cập nhật độ mờ của nút Đăng nhập theo từng ký tự.
-    _email.addListener(_onChanged);
-    _password.addListener(_onChanged);
-  }
+  // Gõ phím chỉ dựng lại nút Đăng nhập (độ mờ), không dựng lại cả màn.
+  late final _fields = Listenable.merge([_email, _password]);
 
   @override
   void dispose() {
@@ -52,8 +47,6 @@ class _LoginScreenState extends State<LoginScreen> {
     _passwordFocus.dispose();
     super.dispose();
   }
-
-  void _onChanged() => setState(() {});
 
   bool get _fromDialog =>
       GoRouterState.of(context).uri.queryParameters[AppRoutes.loginFromParam] == AppRoutes.loginFromDialogValue;
@@ -101,14 +94,25 @@ class _LoginScreenState extends State<LoginScreen> {
     if (sent == true && mounted) showSnack(context, 'Đã gửi hướng dẫn tới email');
   }
 
+  Widget _leadingButton(Widget icon, String tooltip) =>
+      IconButton(icon: icon, tooltip: tooltip, onPressed: () => Navigator.maybePop(context));
+
   @override
   Widget build(BuildContext context) {
     // Đang gửi thì chặn Back: nếu rời màn lúc này, đăng nhập vẫn thành công ngầm sau đó.
     return PopScope(
       canPop: !_loading,
       child: Scaffold(
-        // Từ dialog: nút X đóng màn (requireLogin trả về false). Chỗ khác: nút Back mặc định.
-        appBar: AppBar(leading: _fromDialog ? const CloseButton() : null),
+        // Từ dialog: nút X đóng màn (requireLogin trả về false). Chỗ khác: nút Back nếu có màn phía sau.
+        // CloseButton/BackButton không cho đổi tooltip (mặc định "Close"/"Back") nên tự dựng;
+        // maybePop vẫn tôn trọng PopScope.
+        appBar: AppBar(
+          leading: _fromDialog
+              ? _leadingButton(const CloseButtonIcon(), 'Đóng')
+              : (ModalRoute.of(context)?.impliesAppBarDismissal ?? false)
+                  ? _leadingButton(const BackButtonIcon(), 'Quay lại')
+                  : null,
+        ),
         body: SafeArea(
           top: false,
           child: ListView(
@@ -173,9 +177,13 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
         // Nút mờ khi form chưa hợp lệ nhưng vẫn bấm được, để hiện lỗi dưới từng ô.
-        AnimatedOpacity(
-          opacity: _formValid || _loading ? 1 : 0.5,
-          duration: const Duration(milliseconds: 150),
+        ListenableBuilder(
+          listenable: _fields,
+          builder: (context, child) => AnimatedOpacity(
+            opacity: _formValid || _loading ? 1 : 0.5,
+            duration: const Duration(milliseconds: 150),
+            child: child,
+          ),
           child: FilledButton(
             onPressed: _loading ? null : _submit,
             style: FilledButton.styleFrom(
