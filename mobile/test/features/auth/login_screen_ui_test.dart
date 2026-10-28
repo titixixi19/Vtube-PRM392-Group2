@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vtube/features/auth/widgets/auth_text_field.dart';
 
 import 'auth_test_helpers.dart';
 
@@ -51,6 +52,17 @@ void main() {
     await tester.enterText(passwordField(), demoPassword);
     await tester.pump();
     expect(opacity(), 1);
+  });
+
+  testWidgets('gõ phím chỉ dựng lại nút Đăng nhập, không dựng lại cả form', (tester) async {
+    await pumpLoginScreen(tester, env);
+    final emailWidget = tester.widget<AuthTextField>(find.byType(AuthTextField).first);
+
+    await tester.enterText(passwordField(), demoPassword);
+    await tester.pump();
+
+    // Màn cha build lại thì AuthTextField là đối tượng mới; giữ nguyên nghĩa là chỉ phần nút được dựng lại.
+    expect(identical(tester.widget<AuthTextField>(find.byType(AuthTextField).first), emailWidget), isTrue);
   });
 
   testWidgets('bấm Đăng nhập khi để trống: lỗi hiện dưới từng ô', (tester) async {
@@ -177,27 +189,57 @@ void main() {
 
   testWidgets('mở từ dialog requireLogin: có nút X; bấm X quay lại, requireLogin trả về false', (tester) async {
     await pumpLoginScreen(tester, env, entry: LoginEntry.requireLoginDialog);
-    expect(find.byType(CloseButton), findsOneWidget);
-    expect(find.byType(BackButton), findsNothing);
+    expect(closeButton(), findsOneWidget);
+    expect(find.byType(CloseButtonIcon), findsOneWidget);
+    expect(backButton(), findsNothing);
 
-    await tester.tap(find.byType(CloseButton));
+    await tester.tap(closeButton());
     await tester.pumpAndSettle();
 
     expect(find.text(previousScreenLabel), findsOneWidget);
     expect(find.text(requireLoginResult(false)), findsOneWidget);
   });
 
-  testWidgets('mở từ chỗ khác: nút Back thường, không có nút X', (tester) async {
+  testWidgets('mở từ chỗ khác: nút Back thường, không có nút X; bấm Back quay lại màn trước', (tester) async {
     await pumpLoginScreen(tester, env, entry: LoginEntry.otherScreen);
 
-    expect(find.byType(BackButton), findsOneWidget);
-    expect(find.byType(CloseButton), findsNothing);
+    expect(backButton(), findsOneWidget);
+    expect(find.byType(BackButtonIcon), findsOneWidget);
+    expect(closeButton(), findsNothing);
+
+    await tester.tap(backButton());
+    await tester.pumpAndSettle();
+    expect(find.text(previousScreenLabel), findsOneWidget);
   });
 
   testWidgets('mở thẳng: không có nút Back hay X', (tester) async {
     await pumpLoginScreen(tester, env);
 
-    expect(find.byType(BackButton), findsNothing);
-    expect(find.byType(CloseButton), findsNothing);
+    expect(backButton(), findsNothing);
+    expect(find.byType(BackButtonIcon), findsNothing);
+    expect(closeButton(), findsNothing);
+  });
+
+  testWidgets('nút Back có tooltip tiếng Việt "Quay lại", không còn "Back"', (tester) async {
+    await pumpLoginScreen(tester, env, entry: LoginEntry.otherScreen);
+
+    expect(find.byTooltip('Back'), findsNothing);
+
+    await tester.longPress(backButton());
+    await tester.pumpAndSettle();
+    expect(find.text('Quay lại'), findsOneWidget, reason: 'Nhấn giữ thì hiện tooltip');
+  });
+
+  testWidgets('nút X có tooltip tiếng Việt "Đóng", không còn "Close"', (tester) async {
+    await pumpLoginScreen(tester, env, entry: LoginEntry.requireLoginDialog);
+
+    expect(
+        tester.widget<Tooltip>(find.ancestor(of: find.byType(CloseButtonIcon), matching: find.byType(Tooltip))).message,
+        'Đóng');
+    expect(find.byTooltip('Close'), findsNothing);
+
+    await tester.longPress(closeButton());
+    await tester.pumpAndSettle();
+    expect(find.text('Đóng'), findsOneWidget, reason: 'Nhấn giữ thì hiện tooltip');
   });
 }
