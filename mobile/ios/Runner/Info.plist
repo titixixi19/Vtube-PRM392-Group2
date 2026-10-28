@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSCameraUsageDescription</key>
+	<string>VTube cần dùng camera để chụp ảnh đại diện và quay video.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>VTube cần truy cập thư viện ảnh để chọn ảnh đại diện và video tải lên.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

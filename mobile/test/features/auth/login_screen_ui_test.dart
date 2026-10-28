@@ -184,7 +184,7 @@ void main() {
     await tester.tap(find.text('Đăng ký ngay'));
     await tester.pumpAndSettle();
 
-    expect(find.text(registerLabel), findsOneWidget);
+    expect(find.text('Tạo tài khoản'), findsOneWidget); // tiêu đề màn Đăng ký
   });
 
   testWidgets('mở từ dialog requireLogin: có nút X; bấm X quay lại, requireLogin trả về false', (tester) async {

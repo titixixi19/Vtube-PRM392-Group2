@@ -1,0 +1,283 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:vtube/features/auth/widgets/auth_text_field.dart';
+
+import 'auth_test_helpers.dart';
+
+/// MÀN 3 · ĐĂNG KÝ · kiểm thử giao diện.
+/// Chạy: cd mobile && flutter test test/features/auth/register_screen_ui_test.dart
+void main() {
+  late AuthTestEnv env;
+
+  setUp(() => env = AuthTestEnv());
+
+  testWidgets('hiển thị đủ các thành phần theo thiết kế', (tester) async {
+    await pumpRegisterScreen(tester, env);
+
+    expect(find.text('Tạo tài khoản'), findsOneWidget);
+    expect(find.text('Bắt đầu hành trình sáng tạo'), findsOneWidget);
+    expect(find.text('Chạm để tải ảnh đại diện'), findsOneWidget);
+    for (final label in ['Họ và tên', 'Tên kênh', 'Handle', 'Địa chỉ Email', 'Mật khẩu', 'Xác nhận mật khẩu']) {
+      expect(authField(label), findsOneWidget, reason: label);
+    }
+    // Mọi ô đều bắt buộc nên không gắn nhãn "Bắt buộc" riêng cho một ô (dễ hiểu nhầm ô khác không bắt buộc).
+    expect(find.text('Bắt buộc'), findsNothing);
+    expect(find.text('Ít nhất 8 ký tự, gồm chữ và số'), findsOneWidget);
+    expect(find.byType(Checkbox), findsOneWidget);
+    expect(find.textContaining('Điều khoản dịch vụ', findRichText: true), findsOneWidget);
+    expect(registerButton(), findsOneWidget);
+    expect(find.text('Đã có tài khoản?'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, 'Đăng nhập'), findsOneWidget);
+  });
+
+  testWidgets('đã bỏ "Bước 1/2" và khối "Đặc quyền tài khoản mới" của Stitch', (tester) async {
+    await pumpRegisterScreen(tester, env);
+
+    expect(find.textContaining('Bước 1/2'), findsNothing);
+    expect(find.textContaining('Đặc quyền tài khoản mới'), findsNothing);
+  });
+
+  testWidgets('Tên kênh và Handle là 2 ô riêng, Handle có tiền tố @', (tester) async {
+    await pumpRegisterScreen(tester, env);
+
+    final handleInput = find.descendant(of: authField('Handle'), matching: find.byType(TextField));
+    expect(tester.widget<TextField>(handleInput).decoration!.prefixText, '@');
+    final channelInput = find.descendant(of: authField('Tên kênh'), matching: find.byType(TextField));
+    expect(tester.widget<TextField>(channelInput).decoration!.prefixText, isNull);
+  });
+
+  testWidgets('ô Handle không dùng icon "@" (tránh hiện "@ @ten" cùng tiền tố)', (tester) async {
+    await pumpRegisterScreen(tester, env);
+
+    expect(find.descendant(of: authField('Handle'), matching: find.byIcon(Icons.alternate_email)), findsNothing);
+    expect(
+        find.descendant(of: authField('Handle'), matching: find.byIcon(Icons.account_circle_outlined)), findsOneWidget);
+  });
+
+  testWidgets('chưa tick điều khoản: nút Đăng ký mờ nhưng vẫn bấm được; tick thì rõ', (tester) async {
+    await pumpRegisterScreen(tester, env);
+    double opacity() => tester
+        .widget<AnimatedOpacity>(find.ancestor(of: registerButton(), matching: find.byType(AnimatedOpacity)))
+        .opacity;
+    bool enabled() => tester.widget<FilledButton>(registerButton()).enabled;
+
+    expect(opacity(), 0.5);
+    expect(enabled(), isTrue, reason: 'Bấm được để báo lý do thay vì im lặng');
+
+    await tapVisible(tester, find.byType(Checkbox));
+    await tester.pump();
+    expect(opacity(), 1);
+    expect(enabled(), isTrue);
+  });
+
+  testWidgets('chưa tick điều khoản mà bấm Đăng ký: hiện lời nhắc', (tester) async {
+    await pumpRegisterScreen(tester, env);
+    await fillRegisterForm(tester, agree: false);
+
+    await tapVisible(tester, registerButton());
+    await tester.pump();
+
+    expect(find.text('Vui lòng đồng ý Điều khoản dịch vụ và Chính sách quyền riêng tư'), findsOneWidget);
+  });
+
+  testWidgets('gõ phím không dựng lại cả form (chỉ phần cần đổi)', (tester) async {
+    await pumpRegisterScreen(tester, env);
+    await tester.enterText(authField('Họ và tên'), 'T'); // ký tự đầu: đổi trạng thái "đã nhập dở" -> dựng lại 1 lần
+    await tester.pump();
+    AuthTextField emailWidget() =>
+        tester.widget<AuthTextField>(find.byWidgetPredicate((w) => w is AuthTextField && w.label == 'Địa chỉ Email'));
+    final before = emailWidget();
+
+    await tester.enterText(authField('Họ và tên'), 'Trần');
+    await tester.enterText(authField('Mật khẩu'), 'abc12345');
+    await tester.pump();
+
+    expect(identical(emailWidget(), before), isTrue);
+    expect(find.text('Độ mạnh: Trung bình'), findsOneWidget, reason: 'Thanh độ mạnh vẫn cập nhật theo ký tự');
+  });
+
+  testWidgets('chọn ảnh đại diện: bottom sheet 2 lựa chọn, xem trước ảnh, có thể xóa', (tester) async {
+    await pumpRegisterScreen(tester, env);
+
+    await tester.tap(find.bySemanticsLabel('Chọn ảnh đại diện'));
+    await tester.pumpAndSettle();
+    expect(find.text('Chụp ảnh'), findsOneWidget);
+    expect(find.text('Chọn từ thư viện'), findsOneWidget);
+    expect(find.text('Xóa ảnh'), findsNothing, reason: 'Chưa có ảnh thì không có Xóa');
+
+    await tester.tap(find.text('Chọn từ thư viện'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('avatar-preview')), findsOneWidget);
+    expect(find.text('Chạm để đổi ảnh đại diện'), findsOneWidget);
+
+    await tester.tap(find.bySemanticsLabel('Chọn ảnh đại diện'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Xóa ảnh'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('avatar-preview')), findsNothing);
+    expect(find.text('Chạm để tải ảnh đại diện'), findsOneWidget);
+  });
+
+  testWidgets('thanh độ mạnh mật khẩu cập nhật theo từng ký tự', (tester) async {
+    await pumpRegisterScreen(tester, env);
+    expect(find.textContaining('Độ mạnh'), findsNothing);
+
+    await tester.enterText(authField('Mật khẩu'), 'abc');
+    await tester.pump();
+    expect(find.text('Độ mạnh: Yếu'), findsOneWidget);
+
+    await tester.enterText(authField('Mật khẩu'), 'abc12345');
+    await tester.pump();
+    expect(find.text('Độ mạnh: Trung bình'), findsOneWidget);
+
+    await tester.enterText(authField('Mật khẩu'), 'Abc12345!xyz');
+    await tester.pump();
+    expect(find.text('Độ mạnh: Mạnh'), findsOneWidget);
+  });
+
+  testWidgets('handle đã có người dùng: báo lỗi đỏ dưới ô', (tester) async {
+    await pumpRegisterScreen(tester, env);
+
+    await enterHandle(tester, takenHandle);
+
+    expect(find.text('Đã có người sử dụng'), findsOneWidget);
+    expect(find.byKey(const ValueKey('handle-available')), findsNothing);
+  });
+
+  testWidgets('handle còn trống: hiện dấu ✓ và "Có thể sử dụng"', (tester) async {
+    await pumpRegisterScreen(tester, env);
+
+    await enterHandle(tester, 'kenh.moi_2026');
+
+    expect(find.byKey(const ValueKey('handle-available')), findsOneWidget);
+    expect(find.text('Có thể sử dụng'), findsOneWidget);
+    expect(find.text('Đã có người sử dụng'), findsNothing);
+  });
+
+  testWidgets('ô Handle tự đổi sang chữ thường, bỏ "@" và khoảng trắng', (tester) async {
+    await pumpRegisterScreen(tester, env);
+
+    await tester.enterText(authField('Handle'), '@My Kenh');
+    await tester.pump();
+
+    expect(fieldText(tester, authField('Handle')), 'mykenh');
+  });
+
+  testWidgets('bấm "Điều khoản dịch vụ" mở dialog nội dung', (tester) async {
+    await pumpRegisterScreen(tester, env);
+
+    await tester.ensureVisible(find.byType(Checkbox));
+    await tester.pumpAndSettle();
+    await tester.tapOnText(find.textRange.ofSubstring('Điều khoản dịch vụ'));
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(AlertDialog, 'Điều khoản dịch vụ'), findsOneWidget);
+    expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isFalse, reason: 'Bấm link không tick ô');
+
+    await tester.tap(find.text('Đã hiểu'));
+    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsNothing);
+  });
+
+  testWidgets('bấm sai: cuộn lên ô lỗi đầu tiên', (tester) async {
+    await pumpRegisterScreen(tester, env);
+    // Màn thấp hơn để form chắc chắn dài hơn màn hình.
+    tester.view.physicalSize = const Size(480 * 3, 640 * 3);
+    await tester.pumpAndSettle();
+    // Điền đủ trừ Họ tên (ô đầu tiên, ở trên cùng).
+    await fillRegisterForm(tester, name: '');
+    await tester.enterText(authField('Tên kênh'), 'Kênh Bình');
+
+    await tester.ensureVisible(registerButton());
+    await tester.pumpAndSettle();
+    double nameTop() => tester.getTopLeft(authField('Họ và tên')).dy;
+    expect(nameTop(), lessThan(0), reason: 'Điều kiện đầu: ô Họ tên đã bị cuộn khuất khỏi màn hình');
+
+    await tester.tap(registerButton());
+    await tester.pumpAndSettle();
+
+    expect(errorUnder('Họ và tên', 'Vui lòng nhập họ tên'), findsOneWidget);
+    expect(nameTop(), inInclusiveRange(0, 640), reason: 'Ô Họ tên phải được cuộn vào màn hình');
+  });
+
+  testWidgets('nhấn Tiếp ở ô Mật khẩu: focus sang ô Xác nhận, không dừng ở nút con mắt', (tester) async {
+    await pumpRegisterScreen(tester, env);
+
+    await tester.enterText(authField('Mật khẩu'), 'matkhau1');
+    await tester.testTextInput.receiveAction(TextInputAction.next);
+    await tester.pump();
+
+    expect(editableOf(tester, authField('Xác nhận mật khẩu')).focusNode.hasFocus, isTrue);
+  });
+
+  testWidgets('lỗi "không khớp" ở ô Xác nhận tự hết khi sửa Mật khẩu cho khớp', (tester) async {
+    await pumpRegisterScreen(tester, env);
+    await tester.enterText(authField('Mật khẩu'), 'matkhau1');
+    await tester.enterText(authField('Xác nhận mật khẩu'), 'matkhau12');
+    FocusManager.instance.primaryFocus?.unfocus(); // rời ô Xác nhận -> kiểm tra
+    await tester.pump();
+    expect(errorUnder('Xác nhận mật khẩu', 'Mật khẩu xác nhận không khớp'), findsOneWidget);
+
+    await tester.enterText(authField('Mật khẩu'), 'matkhau12');
+    await tester.pump();
+
+    expect(find.text('Mật khẩu xác nhận không khớp'), findsNothing);
+  });
+
+  testWidgets('đang gửi: hiện vòng quay và khóa các ô', (tester) async {
+    env.service.hold = Completer<void>();
+    await pumpRegisterScreen(tester, env);
+    await fillRegisterForm(tester);
+
+    await tapVisible(tester, registerButton());
+    await tester.pump();
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(tester.widget<TextFormField>(authField('Họ và tên')).enabled, isFalse);
+    expect(tester.widget<TextFormField>(authField('Địa chỉ Email')).enabled, isFalse);
+
+    env.service.hold!.complete();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('Back khi đã nhập dở: hỏi "Hủy đăng ký?", chọn Tiếp tục nhập thì ở lại', (tester) async {
+    await pumpRegisterScreen(tester, env, fromPreviousScreen: true);
+    await tester.enterText(authField('Họ và tên'), 'Bình');
+    await tester.pump(); // vẽ lại để PopScope nhận trạng thái "đã nhập dở"
+
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    expect(find.text('Hủy đăng ký?'), findsOneWidget);
+    expect(find.text('Thông tin đã nhập sẽ bị mất.'), findsOneWidget);
+
+    await tester.tap(find.text('Tiếp tục nhập'));
+    await tester.pumpAndSettle();
+    expect(find.text('Tạo tài khoản'), findsOneWidget);
+    expect(fieldText(tester, authField('Họ và tên')), 'Bình');
+  });
+
+  testWidgets('Back khi đã nhập dở: chọn Hủy đăng ký thì rời màn', (tester) async {
+    await pumpRegisterScreen(tester, env, fromPreviousScreen: true);
+    await tester.enterText(authField('Họ và tên'), 'Bình');
+    await tester.pump(); // vẽ lại để PopScope nhận trạng thái "đã nhập dở"
+
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(TextButton, 'Hủy đăng ký'));
+    await tester.pumpAndSettle();
+
+    expect(find.text(previousScreenLabel), findsOneWidget);
+  });
+
+  testWidgets('Back khi chưa nhập gì: rời màn ngay, không hỏi', (tester) async {
+    await pumpRegisterScreen(tester, env, fromPreviousScreen: true);
+
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Hủy đăng ký?'), findsNothing);
+    expect(find.text(previousScreenLabel), findsOneWidget);
+  });
+}

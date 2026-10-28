@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../app/theme.dart';
 
@@ -22,8 +23,19 @@ class AuthTextField extends StatefulWidget {
   /// Widget bên phải ô (bị thay bằng nút con mắt khi `obscure`).
   final Widget? suffix;
 
-  /// Lỗi từ server (vd. 409 email đã dùng), hiện đè lên lỗi của validator.
+  /// Chữ nhỏ bên phải nhãn, vd. "Bắt buộc", "Tối thiểu 8 ký tự", "Đang kiểm tra...".
+  final Widget? labelTrailing;
+
+  /// Tiền tố trong ô, vd. "@" cho handle.
+  final String? prefixText;
+
+  final List<TextInputFormatter>? inputFormatters;
+
+  /// Lỗi từ server (vd. 409 email đã dùng): hiện đè lên lỗi của validator và làm form không hợp lệ.
   final String? errorText;
+
+  /// Key của TextFormField bên trong, để màn hình gọi validate() riêng ô này.
+  final GlobalKey<FormFieldState<String>>? fieldKey;
 
   const AuthTextField({
     super.key,
@@ -41,7 +53,11 @@ class AuthTextField extends StatefulWidget {
     this.onFieldSubmitted,
     this.onChanged,
     this.suffix,
+    this.labelTrailing,
+    this.prefixText,
+    this.inputFormatters,
     this.errorText,
+    this.fieldKey,
   });
 
   @override
@@ -78,15 +94,26 @@ class _AuthTextFieldState extends State<AuthTextField> {
         : widget.suffix;
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(
-        widget.label,
-        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
-      ),
+      Row(children: [
+        Expanded(
+          child: Text(
+            widget.label,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
+          ),
+        ),
+        if (widget.labelTrailing != null)
+          DefaultTextStyle.merge(
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
+            child: widget.labelTrailing!,
+          ),
+      ]),
       const SizedBox(height: 6),
       TextFormField(
+        key: widget.fieldKey,
         controller: widget.controller,
         focusNode: widget.focusNode,
         validator: widget.validator,
+        forceErrorText: widget.errorText,
         autovalidateMode: AutovalidateMode.onUnfocus,
         enabled: widget.enabled,
         obscureText: _hidden,
@@ -97,10 +124,11 @@ class _AuthTextFieldState extends State<AuthTextField> {
         autofillHints: widget.autofillHints,
         onFieldSubmitted: widget.onFieldSubmitted,
         onChanged: widget.onChanged,
+        inputFormatters: widget.inputFormatters,
         style: const TextStyle(fontSize: 14),
         decoration: InputDecoration(
           hintText: widget.hint,
-          errorText: widget.errorText,
+          prefixText: widget.prefixText,
           errorMaxLines: 2,
           fillColor: AppColors.surfaceContainer,
           prefixIcon: Icon(widget.icon, size: 20),
