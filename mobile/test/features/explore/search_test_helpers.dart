@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -22,6 +24,9 @@ class FakeSearchService extends SearchService {
   );
   ApiException? suggestionsError;
 
+  /// Map hỗ trợ kiểm tra phản hồi bất đồng bộ theo thứ tự tự định nghĩa (race condition).
+  final Map<String, Completer<SearchSuggestions>> queryCompleters = {};
+
   int deleteCalls = 0;
   String? lastDeletedKeyword;
   ApiException? deleteError;
@@ -30,6 +35,9 @@ class FakeSearchService extends SearchService {
   Future<SearchSuggestions> suggestions(String q) async {
     suggestionsCalls++;
     lastSuggestionsQuery = q;
+    if (queryCompleters.containsKey(q)) {
+      return await queryCompleters[q]!.future;
+    }
     if (suggestionsError != null) throw suggestionsError!;
     return returnSuggestions;
   }
@@ -62,7 +70,12 @@ Widget buildTestSearchScreen({
         builder: (context, state) {
           final q = state.uri.queryParameters['q'] ?? '';
           onPushed?.call(AppRoutes.searchResults(q));
-          return Scaffold(body: Text('Results: $q'));
+          return Scaffold(
+            appBar: AppBar(
+              leading: BackButton(onPressed: () => context.pop()),
+            ),
+            body: Text('Results: $q'),
+          );
         },
       ),
     ],

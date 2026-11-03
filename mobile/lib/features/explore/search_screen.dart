@@ -15,10 +15,11 @@ import '../../data/services/search_service.dart';
 /// - AppBar với ô tìm kiếm bo tròn, tự focus, nút X xóa nội dung, nút Micro.
 /// - Ô trống: lấy lịch sử tìm kiếm từ server (icon đồng hồ).
 /// - Đang gõ: debounce 300 ms, gọi API gợi ý, RichText in đậm phần gợi ý thêm.
-/// - Chống race condition với `_lastQuery`.
+/// - Chống race condition với `_lastQuery` được cập nhật ngay khi gõ.
 /// - Nút ↖ điền từ khóa vào ô mà chưa tìm.
 /// - Nhấn giữ mục lịch sử: Dialog xác nhận xóa và gọi API `deleteHistory`.
 /// - Enter hoặc bấm gợi ý: điều hướng tới `AppRoutes.searchResults(q)`.
+/// - Quay lại từ Màn 10: tự động tải lại gợi ý / lịch sử mới.
 class SearchScreen extends StatefulWidget {
   final String? initialQuery;
 
@@ -64,16 +65,18 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _onQueryChanged(String query) {
-    setState(() {}); // Cập nhật nút xóa X
+    final trimmed = query.trim();
+    _lastQuery = trimmed;
+    setState(() {}); // Cập nhật nút xóa X và giao diện
     _debounceTimer?.cancel();
 
-    if (query.isEmpty) {
+    if (trimmed.isEmpty) {
       _loadSuggestions('');
       return;
     }
 
     _debounceTimer = Timer(const Duration(milliseconds: 300), () {
-      _loadSuggestions(query);
+      _loadSuggestions(trimmed);
     });
   }
 
@@ -92,21 +95,22 @@ class _SearchScreenState extends State<SearchScreen> {
         _suggestions = List<String>.from(res.suggestions);
         _loading = false;
       });
-    } on ApiException {
+    } catch (e) {
       if (!mounted) return;
       if (_lastQuery != query) return;
       setState(() => _loading = false);
-    } catch (_) {
-      if (!mounted) return;
-      if (_lastQuery != query) return;
-      setState(() => _loading = false);
+      final msg = e is ApiException ? e.message : 'Không thể tải gợi ý tìm kiếm. Vui lòng thử lại.';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     }
   }
 
-  void _submitSearch(String rawQuery) {
+  Future<void> _submitSearch(String rawQuery) async {
     final q = rawQuery.trim();
     if (q.isEmpty) return;
-    context.push(AppRoutes.searchResults(q));
+    await context.push(AppRoutes.searchResults(q));
+    if (!mounted) return;
+    // Tìm xong bấm Back -> tải lại lịch sử cập nhật
+    _loadSuggestions(_controller.text.trim());
   }
 
   void _fillQuery(String text) {
@@ -176,7 +180,7 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildHighlightedText(String text, String rawQuery) {
-    final query = rawQuery.trim().toLowerCase();
+    final query = rawQuery.trim();
     if (query.isEmpty) {
       return Text(
         text,
@@ -190,9 +194,8 @@ class _SearchScreenState extends State<SearchScreen> {
       );
     }
 
-    final lowerText = text.toLowerCase();
-    final matchIndex = lowerText.indexOf(query);
-    if (matchIndex == -1) {
+    final match = RegExp(RegExp.escape(query), caseSensitive: false).firstMatch(text);
+    if (match == null) {
       return Text(
         text,
         maxLines: 1,
@@ -205,9 +208,9 @@ class _SearchScreenState extends State<SearchScreen> {
       );
     }
 
-    final before = text.substring(0, matchIndex);
-    final match = text.substring(matchIndex, matchIndex + query.length);
-    final after = text.substring(matchIndex + query.length);
+    final before = text.substring(0, match.start);
+    final matchedText = text.substring(match.start, match.end);
+    final after = text.substring(match.end);
 
     return RichText(
       maxLines: 1,
@@ -221,7 +224,7 @@ class _SearchScreenState extends State<SearchScreen> {
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
           TextSpan(
-            text: match,
+            text: matchedText,
             style: const TextStyle(fontWeight: FontWeight.normal),
           ),
           if (after.isNotEmpty)
@@ -239,8 +242,9 @@ class _SearchScreenState extends State<SearchScreen> {
     final currentText = _controller.text;
     final isQueryEmpty = currentText.trim().isEmpty;
 
-    // Lọc trùng: nếu từ khóa gợi ý đã có trong lịch sử thì không hiện lặp
-    final filteredSuggestions = _suggestions.where((s) => !_history.contains(s)).toList();
+    // Lọc trùng không phân biệt hoa thường với lịch sử
+    final historyLowerSet = _history.map((h) => h.toLowerCase()).toSet();
+    final filteredSuggestions = _suggestions.where((s) => !historyLowerSet.contains(s.toLowerCase())).toList();
     final hasNoItems = _history.isEmpty && filteredSuggestions.isEmpty;
 
     return Scaffold(

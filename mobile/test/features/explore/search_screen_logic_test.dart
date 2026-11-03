@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vtube/core/network/api_exception.dart';
@@ -94,6 +96,98 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(pushedRoute, '/search/results?q=flutter');
+    });
+
+    testWidgets('Tìm xong bấm Back: tự động tải lại lịch sử cập nhật', (tester) async {
+      await tester.pumpWidget(buildTestSearchScreen(searchService: service));
+      await tester.pumpAndSettle();
+
+      expect(service.suggestionsCalls, 1);
+
+      // Tìm kiếm "dart"
+      await tester.enterText(find.byKey(const Key('search_text_field')), 'dart');
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
+
+      // Đang ở màn kết quả (hiển thị BackButton)
+      expect(find.text('Results: dart'), findsOneWidget);
+
+      // Bấm Back quay lại màn Tìm kiếm
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+
+      // Kiểm tra _loadSuggestions được gọi lại khi quay về
+      expect(service.suggestionsCalls, greaterThanOrEqualTo(2));
+      expect(service.lastSuggestionsQuery, 'dart');
+    });
+
+    testWidgets('Response về sai thứ tự (race condition): kết quả cũ về sau không đè kết quả mới', (tester) async {
+      final completerA = Completer<SearchSuggestions>();
+      final completerB = Completer<SearchSuggestions>();
+      service.queryCompleters['a'] = completerA;
+      service.queryCompleters['b'] = completerB;
+
+      await tester.pumpWidget(buildTestSearchScreen(searchService: service));
+      await tester.pumpAndSettle();
+
+      // Gõ "a"
+      await tester.enterText(find.byKey(const Key('search_text_field')), 'a');
+      await tester.pump(const Duration(milliseconds: 350));
+      expect(service.lastSuggestionsQuery, 'a');
+
+      // Gõ tiếp "b"
+      await tester.enterText(find.byKey(const Key('search_text_field')), 'b');
+      await tester.pump(const Duration(milliseconds: 350));
+      expect(service.lastSuggestionsQuery, 'b');
+
+      // Cho request "b" (mới nhất) về trước
+      completerB.complete(const SearchSuggestions(
+        history: [],
+        suggestions: ['banana shake'],
+      ));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('suggestion_banana shake')), findsOneWidget);
+
+      // Cho request "a" (cũ) về sau
+      completerA.complete(const SearchSuggestions(
+        history: [],
+        suggestions: ['apple pie'],
+      ));
+      await tester.pumpAndSettle();
+
+      // Giao diện vẫn phải giữ kết quả của "b", không bị "a" đè lên
+      expect(find.byKey(const Key('suggestion_banana shake')), findsOneWidget);
+      expect(find.byKey(const Key('suggestion_apple pie')), findsNothing);
+    });
+
+    testWidgets('Lỗi khi tải gợi ý: hiện SnackBar báo lỗi', (tester) async {
+      await tester.pumpWidget(buildTestSearchScreen(searchService: service));
+      await tester.pumpAndSettle();
+
+      service.suggestionsError = const ApiException('Lỗi máy chủ khi tải gợi ý');
+
+      await tester.enterText(find.byKey(const Key('search_text_field')), 'error_test');
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Lỗi máy chủ khi tải gợi ý'), findsOneWidget);
+    });
+
+    testWidgets('Lọc trùng gợi ý không phân biệt hoa thường', (tester) async {
+      service.returnSuggestions = const SearchSuggestions(
+        history: ['Flutter'],
+        suggestions: ['flutter', 'Flutter Tutorial'],
+      );
+
+      await tester.pumpWidget(buildTestSearchScreen(searchService: service));
+      await tester.pumpAndSettle();
+
+      // Mục lịch sử 'Flutter' có mặt
+      expect(find.byKey(const Key('history_Flutter')), findsOneWidget);
+      // Gợi ý 'flutter' (viết thường) bị lọc bỏ để tránh trùng
+      expect(find.byKey(const Key('suggestion_flutter')), findsNothing);
+      // 'Flutter Tutorial' vẫn xuất hiện
+      expect(find.byKey(const Key('suggestion_Flutter Tutorial')), findsOneWidget);
     });
 
     testWidgets('Nhấn giữ mục lịch sử và xác nhận xóa: gọi deleteHistory', (tester) async {
