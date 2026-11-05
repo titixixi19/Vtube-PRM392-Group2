@@ -867,7 +867,7 @@ Mỗi màn dưới đây gắn với luồng của một người để dễ nh�
 | --- | --- | --- | --- |
 | Onboarding | 3 trang giới thiệu có hình minh họa, chấm chỉ trang, nút "Bỏ qua" và "Bắt đầu"; chỉ hiện lần đầu mở app | Splash | Người 1 |
 | Quên mật khẩu | Nhập email → nhập mã OTP 6 số (đếm ngược 60 giây, gửi lại) → đặt mật khẩu mới | Đăng nhập | Người 1 |
-| Chỉnh sửa hồ sơ / kênh | Đổi avatar, banner, tên, handle, mô tả, link; nút Lưu, cảnh báo khi rời màn chưa lưu | Trang "Bạn", Trang kênh | Người 1 |
+| Chỉnh sửa hồ sơ / kênh (**đã làm: Màn 17**) | Đổi avatar, banner, tên hiển thị, tên kênh, mô tả; handle và email chỉ hiển thị (API không cho đổi); nút Lưu, cảnh báo khi rời màn chưa lưu. Chi tiết: `docs/tasks/NGUOI-1.md` | Trang "Bạn" | Người 1 |
 | Cài đặt | Giao diện Sáng/Tối/Theo hệ thống, ngôn ngữ, chất lượng mặc định (Wi-Fi / dữ liệu di động), tự phát video, bật/tắt thông báo, xóa lịch sử tìm kiếm, phiên bản app | Trang "Bạn" | Người 1 |
 | Mini player | Player thu nhỏ ở đáy (thumbnail, tiêu đề, Play/Pause, X), vuốt lên để mở lại, giữ vị trí phát khi chuyển tab | Xem video | Người 2 |
 | Toàn màn hình ngang | Player xoay ngang, vuốt lên để xem video gợi ý, vuốt dọc mép trái/phải để chỉnh độ sáng/âm lượng | Xem video | Người 2 |
