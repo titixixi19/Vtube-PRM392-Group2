@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/auth/account_screen.dart';
+import '../features/auth/edit_profile_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/register_screen.dart';
 import '../features/auth/splash_screen.dart';
@@ -79,5 +80,6 @@ GoRouter buildRouter() => GoRouter(
           builder: (context, state) => UploadScreen(isShort: state.uri.queryParameters['short'] == '1'),
         ),
         GoRoute(path: AppRoutes.notifications, builder: (context, state) => const NotificationsScreen()),
+        GoRoute(path: AppRoutes.editProfile, builder: (context, state) => const EditProfileScreen()),
       ],
     );

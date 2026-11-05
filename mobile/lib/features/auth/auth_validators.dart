@@ -1,4 +1,4 @@
-/// Hàm kiểm tra dữ liệu cho các form trong luồng Xác thực (Đăng nhập, Đăng ký).
+/// Hàm kiểm tra dữ liệu cho các form trong luồng Xác thực (Đăng nhập, Đăng ký, Chỉnh sửa hồ sơ).
 /// Dùng làm `validator` của TextFormField: trả về câu lỗi, hoặc null nếu hợp lệ.
 class AuthValidators {
   AuthValidators._();
@@ -38,6 +38,16 @@ class AuthValidators {
     final v = value?.trim() ?? '';
     if (v.isEmpty) return 'Vui lòng nhập tên kênh';
     if (v.length < 2 || v.length > 50) return 'Tên kênh phải từ 2 đến 50 ký tự';
+    return null;
+  }
+
+  /// Số ký tự tối đa của mô tả kênh (màn Chỉnh sửa hồ sơ).
+  static const channelDescriptionMax = 1000;
+
+  /// Mô tả kênh: không bắt buộc (để trống = xóa mô tả), tối đa [channelDescriptionMax] ký tự.
+  static String? channelDescription(String? value) {
+    final v = value?.trim() ?? '';
+    if (v.length > channelDescriptionMax) return 'Mô tả tối đa $channelDescriptionMax ký tự';
     return null;
   }
 

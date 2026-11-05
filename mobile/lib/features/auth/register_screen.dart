@@ -14,16 +14,11 @@ import '../../core/network/api_exception.dart';
 import '../../data/services/auth_service.dart';
 import '../../data/services/upload_service.dart';
 import 'auth_validators.dart';
+import 'image_pick.dart';
 import 'widgets/auth_text_field.dart';
 import 'widgets/avatar_picker.dart';
 import 'widgets/password_strength_bar.dart';
 import 'widgets/terms_checkbox.dart';
-
-/// Mở camera hoặc thư viện để chọn ảnh. Tách thành tham số để test truyền hàm giả.
-typedef PickImage = Future<XFile?> Function(ImageSource source);
-
-Future<XFile?> _pickImageFromDevice(ImageSource source) =>
-    ImagePicker().pickImage(source: source, maxWidth: 512, maxHeight: 512, imageQuality: 85);
 
 /// MÀN 3 · ĐĂNG KÝ · Người 1
 /// API:
@@ -35,7 +30,7 @@ Future<XFile?> _pickImageFromDevice(ImageSource source) =>
 class RegisterScreen extends StatefulWidget {
   final PickImage pickImage;
 
-  const RegisterScreen({super.key, this.pickImage = _pickImageFromDevice});
+  const RegisterScreen({super.key, this.pickImage = pickAvatarFromDevice});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();

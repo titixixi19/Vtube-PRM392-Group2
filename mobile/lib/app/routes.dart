@@ -24,6 +24,7 @@ class AppRoutes {
   static const history = '/history'; // Màn 13
   static const notifications = '/notifications'; // Màn 16
   static const upload = '/upload'; // Màn 15 (?short=1)
+  static const editProfile = '/edit-profile'; // Màn 17 (mở rộng, mở từ Màn 4)
 
   static String video(int id) => '/video/$id'; // Màn 6 (Màn 7 là bottom sheet trong màn 6)
   static String shortsAt(int videoId) => '$shorts?start=$videoId';

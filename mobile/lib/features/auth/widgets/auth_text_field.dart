@@ -37,6 +37,13 @@ class AuthTextField extends StatefulWidget {
   /// Key của TextFormField bên trong, để màn hình gọi validate() riêng ô này.
   final GlobalKey<FormFieldState<String>>? fieldKey;
 
+  /// Số dòng của ô (vd. ô Mô tả nhiều dòng). Ô mật khẩu luôn 1 dòng.
+  final int minLines;
+  final int maxLines;
+
+  /// Giới hạn số ký tự, có bộ đếm dưới ô. null = không giới hạn.
+  final int? maxLength;
+
   const AuthTextField({
     super.key,
     required this.label,
@@ -58,7 +65,10 @@ class AuthTextField extends StatefulWidget {
     this.inputFormatters,
     this.errorText,
     this.fieldKey,
-  });
+    this.minLines = 1,
+    this.maxLines = 1,
+    this.maxLength,
+  }) : assert(!obscure || maxLines == 1, 'Ô mật khẩu chỉ có 1 dòng');
 
   @override
   State<AuthTextField> createState() => _AuthTextFieldState();
@@ -125,6 +135,9 @@ class _AuthTextFieldState extends State<AuthTextField> {
         onFieldSubmitted: widget.onFieldSubmitted,
         onChanged: widget.onChanged,
         inputFormatters: widget.inputFormatters,
+        minLines: widget.minLines,
+        maxLines: widget.maxLines,
+        maxLength: widget.maxLength,
         style: const TextStyle(fontSize: 14),
         decoration: InputDecoration(
           hintText: widget.hint,

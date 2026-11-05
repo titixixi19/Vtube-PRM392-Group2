@@ -132,8 +132,40 @@ Phần dùng chung đã có sẵn, chỉ việc dùng:
 
 ---
 
+## Màn 17 (mở rộng): Chỉnh sửa hồ sơ (`edit_profile_screen.dart`)
+
+- **Route**: `AppRoutes.editProfile` (`/edit-profile`), đè lên bottom nav.
+- **Mở từ**: Trang "Bạn": bấm avatar ở header, hoặc chip "Chỉnh sửa hồ sơ" (cuối hàng chip).
+- **Không sửa backend**: chỉ dùng API có sẵn.
+
+**Việc cần làm**
+- [x] Tải thông tin kênh bằng `ChannelService.get(user.channel.id)` để có mô tả và ảnh bìa; đủ 3 trạng thái đang tải / lỗi có "Thử lại" / form.
+- [x] Ảnh bìa (`BannerPicker`) và ảnh đại diện (`AvatarPicker`): bottom sheet "Chụp ảnh / Chọn từ thư viện", có "Dùng lại ảnh cũ" khi đã chọn ảnh mới; xem trước ngay.
+- [x] Các ô: Tên hiển thị (2–50 ký tự), Tên kênh (2–50 ký tự), Mô tả kênh (không bắt buộc, tối đa 1000 ký tự, có bộ đếm).
+- [x] Handle và email chỉ hiển thị kèm biểu tượng khóa (API không cho đổi).
+- [x] Nút "Lưu" trên app bar chỉ bật khi có thay đổi (khoảng trắng hai đầu không tính); đang lưu thì hiện vòng quay và khóa các ô.
+- [x] Khi lưu, chỉ gửi phần đã đổi:
+  - Upload ảnh trước bằng `UploadService.upload(path, type: 'image')`; lỗi thì chưa gửi gì lên server
+  - Tên hiển thị / avatar → `AuthService.updateMe` (backend tự đồng bộ avatar sang kênh)
+  - Tên kênh / mô tả / ảnh bìa → `ChannelService.updateMine` (xóa trắng mô tả = gửi chuỗi rỗng)
+  - Xong thì `AuthProvider.refreshMe()` để Trang "Bạn" cập nhật, SnackBar "Đã lưu thay đổi", quay về
+- [x] Lưu được một phần rồi lỗi: phần đã lưu không gửi lại, ảnh đã upload không upload lại khi bấm Lưu lần nữa.
+- [x] Rời màn khi còn thay đổi chưa lưu → dialog "Bỏ thay đổi?". Đang lưu thì chặn Back.
+- [x] Phiên đăng nhập hết khi đang ở màn → mời đăng nhập lại.
+
+**Nghiệm thu**
+1. Đăng nhập demo → tab Bạn → bấm avatar → mở màn, các ô điền sẵn tên, tên kênh, mô tả.
+2. Đổi tên hiển thị → Lưu → về Trang "Bạn", tên mới hiện ngay.
+3. Đổi ảnh đại diện → Lưu → avatar ở Trang "Bạn" và bottom nav đổi theo.
+4. Sửa tên rồi bấm Back → hỏi "Bỏ thay đổi?".
+5. Xóa trắng tên kênh → Lưu → báo lỗi dưới ô, không gọi API.
+
+**Test**: `test/features/auth/edit_profile_screen_ui_test.dart`, `edit_profile_screen_logic_test.dart`.
+
+---
+
 ## Màn mở rộng (khi còn thời gian)
 
 - **Cài đặt**: giao diện sáng/tối, tự phát video, tạm dừng lịch sử (`AuthService.setHistoryPaused`), xóa lịch sử tìm kiếm, phiên bản.
-- **Chỉnh sửa hồ sơ / kênh**: `ChannelService.updateMine` + upload avatar/banner, rồi `AuthProvider.refreshMe()`.
+- ~~**Chỉnh sửa hồ sơ / kênh**~~: đã làm, xem Màn 17 ở trên.
 - **Quên mật khẩu**: email → OTP 6 số (giả lập) → mật khẩu mới.

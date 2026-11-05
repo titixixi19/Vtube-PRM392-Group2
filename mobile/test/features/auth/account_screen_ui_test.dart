@@ -44,14 +44,28 @@ void main() {
       expect(find.textContaining('Premium'), findsNothing);
     });
 
-    testWidgets('header: tên, "@handle · Xem kênh", số người đăng ký, 2 chip tài khoản', (tester) async {
+    testWidgets('header: tên, "@handle · Xem kênh", số người đăng ký, 3 chip tài khoản', (tester) async {
       await pumpAccount(tester, env);
 
       expect(find.text(accountName), findsOneWidget);
       expect(find.text('@$accountHandle · Xem kênh'), findsOneWidget);
       expect(find.text('1,2 N người đăng ký'), findsOneWidget);
+      expect(find.widgetWithText(ActionChip, 'Chỉnh sửa hồ sơ'), findsOneWidget);
       expect(find.widgetWithText(ActionChip, 'Chuyển đổi tài khoản'), findsOneWidget);
       expect(find.widgetWithText(ActionChip, 'Tài khoản Google'), findsOneWidget);
+    });
+
+    testWidgets('chip "Chỉnh sửa hồ sơ" và bấm avatar đều mở màn Chỉnh sửa hồ sơ', (tester) async {
+      await pumpAccount(tester, env);
+
+      await tapVisible(tester, find.widgetWithText(ActionChip, 'Chỉnh sửa hồ sơ'));
+      expect(find.text(editProfileLabel), findsOneWidget);
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      await tester.tap(find.bySemanticsLabel('Chỉnh sửa hồ sơ').first);
+      await tester.pumpAndSettle();
+      expect(find.text(editProfileLabel), findsOneWidget);
     });
 
     testWidgets('Nhật ký xem: hàng cuộn ngang, có thanh tiến độ đỏ đúng tỉ lệ đã xem', (tester) async {

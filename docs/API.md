@@ -77,7 +77,7 @@ Tài khoản mẫu: `demo@vtube.vn` / `123456`. Các kênh khác: `vtech@vtube.v
 | POST | `/api/auth/logout` | header token | `204` | 4 |
 | GET | `/api/users/check-handle?handle=abc` | | `{ available: true }` | 3 |
 | GET 🔒 | `/api/me` | | `Me` | 1, 4 |
-| PUT 🔒 | `/api/me` | `{ displayName?, avatarUrl? }` | `Me` | 4 |
+| PUT 🔒 | `/api/me` | `{ displayName?, avatarUrl? }` | `Me` | 4, 17 |
 | PATCH 🔒 | `/api/me/settings` | `{ historyPaused: true }` | `Me` | 13 |
 
 **Me**: `{ id, email, displayName, avatarUrl, historyPaused, createdAt, channel: ChannelBrief }`
@@ -141,7 +141,7 @@ Quy tắc:
 | GET | `/api/channels/{id}/videos` | `sort=newest\|popular\|oldest`, `page` | `Page<Video>` | 11 |
 | GET | `/api/channels/{id}/shorts` | `sort`, `page` | `Page<Video>` | 11 |
 | GET | `/api/channels/{id}/playlists` | | `[Playlist]` | 11 |
-| PUT 🔒 | `/api/channels/me` | `{ name?, description?, avatarUrl?, bannerUrl? }` | `Channel` | 11 |
+| PUT 🔒 | `/api/channels/me` | `{ name?, description?, avatarUrl?, bannerUrl? }` | `Channel` | 11, 17 |
 | PUT 🔒 | `/api/channels/{id}/subscription` | `{ notifyMode? }` | `{ subscribed, notifyMode, subscriberCount }` | 6, 8, 10, 11 |
 | DELETE 🔒 | `/api/channels/{id}/subscription` | | `{ subscribed: false, ... }` | 6, 11, 12 |
 | GET 🔒 | `/api/me/subscriptions` | `sort=recent\|az\|relevance` | `[{ channel, notifyMode, hasNew, lastUploadAt }]` | 12 |

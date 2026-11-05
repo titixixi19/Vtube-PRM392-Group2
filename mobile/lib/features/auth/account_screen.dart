@@ -23,6 +23,7 @@ import 'widgets/playlist_form_dialog.dart';
 ///   - HistoryService.list(size: 10)                (hàng "Nhật ký xem")
 ///   - PlaylistService.mine() / create / update / delete   (hàng "Danh sách phát")
 ///   - AuthProvider.logout()                        (Đăng xuất)
+/// Bấm avatar hoặc chip "Chỉnh sửa hồ sơ" -> Màn 17 (AppRoutes.editProfile).
 /// Thiết kế: design/stitch/4._trang_b_n/ (bỏ banner "VTube Premium Creator", logo chỉ ghi "VTube" một lần).
 /// Mỗi hàng tải và báo lỗi riêng (có "Thử lại"), không làm hỏng cả màn.
 class AccountScreen extends StatefulWidget {
@@ -322,6 +323,7 @@ class _AccountScreenState extends State<AccountScreen> {
             child: _Header(
               user: user,
               onOpenChannel: () => _open(AppRoutes.channel(user.channel.id)),
+              onEditProfile: () => _open(AppRoutes.editProfile),
               onSwitchAccount: () => _switchAccount(user),
               onGoogleAccount: () => showSnack(context, 'Quản lý Tài khoản Google (giả lập)'),
             ),
@@ -428,16 +430,18 @@ class _AccountScreenState extends State<AccountScreen> {
   }
 }
 
-/// Avatar lớn, tên, "@handle · Xem kênh >", số người đăng ký, 2 chip tài khoản.
+/// Avatar lớn (bấm để chỉnh sửa hồ sơ), tên, "@handle · Xem kênh >", số người đăng ký, các chip tài khoản.
 class _Header extends StatelessWidget {
   final Me user;
   final VoidCallback onOpenChannel;
+  final VoidCallback onEditProfile;
   final VoidCallback onSwitchAccount;
   final VoidCallback onGoogleAccount;
 
   const _Header({
     required this.user,
     required this.onOpenChannel,
+    required this.onEditProfile,
     required this.onSwitchAccount,
     required this.onGoogleAccount,
   });
@@ -450,7 +454,11 @@ class _Header extends StatelessWidget {
       decoration: BoxDecoration(color: AppColors.surfaceLow, borderRadius: BorderRadius.circular(16)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          ChannelAvatar(url: user.avatarUrl ?? channel.avatarUrl, size: 80),
+          Semantics(
+            button: true,
+            label: 'Chỉnh sửa hồ sơ',
+            child: ChannelAvatar(url: user.avatarUrl ?? channel.avatarUrl, size: 80, onTap: onEditProfile),
+          ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -495,6 +503,9 @@ class _Header extends StatelessWidget {
             _AccountChip(icon: Icons.switch_account_outlined, label: 'Chuyển đổi tài khoản', onTap: onSwitchAccount),
             const SizedBox(width: 8),
             _AccountChip(icon: Icons.account_circle_outlined, label: 'Tài khoản Google', onTap: onGoogleAccount),
+            const SizedBox(width: 8),
+            // Để cuối: lối vào chính là bấm avatar, chip này cho người không biết avatar bấm được.
+            _AccountChip(icon: Icons.edit_outlined, label: 'Chỉnh sửa hồ sơ', onTap: onEditProfile),
           ]),
         ),
       ]),

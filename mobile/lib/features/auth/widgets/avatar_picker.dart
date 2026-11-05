@@ -3,21 +3,28 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../../../app/theme.dart';
+import '../../../shared/widgets/app_network_image.dart';
 
-/// Ô chọn ảnh đại diện tròn có huy hiệu máy ảnh (màn Đăng ký). Chưa có ảnh -> icon người.
+/// Ô chọn ảnh đại diện tròn có huy hiệu máy ảnh (màn Đăng ký, Chỉnh sửa hồ sơ).
+/// Ưu tiên ảnh vừa chọn ([imageBytes]), rồi tới ảnh đang dùng ([imageUrl]); không có ảnh -> icon người.
 class AvatarPicker extends StatelessWidget {
   final Uint8List? imageBytes;
+
+  /// Ảnh đại diện hiện tại trên server (màn Chỉnh sửa hồ sơ).
+  final String? imageUrl;
 
   /// null -> không bấm được (đang gửi form).
   final VoidCallback? onTap;
 
-  const AvatarPicker({super.key, this.imageBytes, this.onTap});
+  const AvatarPicker({super.key, this.imageBytes, this.imageUrl, this.onTap});
 
   static const _size = 104.0;
 
   @override
   Widget build(BuildContext context) {
     final bytes = imageBytes;
+    final url = imageUrl;
+    final hasImage = bytes != null || url != null;
     return Column(mainAxisSize: MainAxisSize.min, children: [
       Semantics(
         button: true,
@@ -37,10 +44,12 @@ class AvatarPicker extends StatelessWidget {
                   color: AppColors.surfaceHigh,
                   border: Border.all(color: AppColors.surfaceHighest, width: 2),
                 ),
-                child: bytes == null
-                    ? const Icon(Icons.person_outline, size: 48, color: AppColors.textSecondary)
-                    : Image.memory(bytes,
-                        key: const ValueKey('avatar-preview'), fit: BoxFit.cover, gaplessPlayback: true),
+                child: bytes != null
+                    ? Image.memory(bytes,
+                        key: const ValueKey('avatar-preview'), fit: BoxFit.cover, gaplessPlayback: true)
+                    : url != null
+                        ? AppNetworkImage(key: const ValueKey('avatar-current'), url: url)
+                        : const Icon(Icons.person_outline, size: 48, color: AppColors.textSecondary),
               ),
               Positioned(
                 right: 0,
@@ -62,7 +71,7 @@ class AvatarPicker extends StatelessWidget {
       ),
       const SizedBox(height: 8),
       Text(
-        bytes == null ? 'Chạm để tải ảnh đại diện' : 'Chạm để đổi ảnh đại diện',
+        hasImage ? 'Chạm để đổi ảnh đại diện' : 'Chạm để tải ảnh đại diện',
         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
       ),
     ]);

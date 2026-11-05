@@ -30,6 +30,7 @@ const accountChannelId = 7;
 const homeLabel = 'TRANG CHỦ';
 const loginLabel = 'MÀN ĐĂNG NHẬP';
 const historyLabel = 'MÀN LỊCH SỬ';
+const editProfileLabel = 'MÀN CHỈNH SỬA HỒ SƠ';
 String playlistLabel(int id) => 'MÀN PLAYLIST $id';
 String channelLabel(int id) => 'MÀN KÊNH $id';
 String videoLabel(int id) => 'MÀN VIDEO $id';
@@ -224,6 +225,7 @@ Future<void> pumpAccount(WidgetTester tester, AccountTestEnv env, {bool signedIn
       GoRoute(path: AppRoutes.home, builder: (_, __) => _label(homeLabel)),
       GoRoute(path: AppRoutes.login, builder: (_, __) => _label(loginLabel)),
       GoRoute(path: AppRoutes.history, builder: (_, __) => _label(historyLabel)),
+      GoRoute(path: AppRoutes.editProfile, builder: (_, __) => _label(editProfileLabel)),
       GoRoute(path: AppRoutes.search, builder: (_, __) => _label('MÀN TÌM KIẾM')),
       GoRoute(path: AppRoutes.notifications, builder: (_, __) => _label('MÀN THÔNG BÁO')),
       GoRoute(path: '/playlist/:id', builder: (_, s) => _label(playlistLabel(int.parse(s.pathParameters['id']!)))),
