@@ -1,24 +1,259 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:video_player/video_player.dart';
 
-import '../../shared/widgets/screen_placeholder.dart';
+import '../../app/theme.dart';
+import '../../core/config/api_config.dart';
+import '../../data/models/models.dart';
+import '../../data/services/video_service.dart';
+import '../../shared/widgets/state_views.dart';
+import 'comments_sheet.dart';
+import 'widgets/shorts_page_item.dart';
 
 /// MÀN 8 · SHORTS · Người 2 (tab 2)
-/// API: VideoService.shorts(page:), react, addView; ChannelService.subscribe; showCommentsSheet
-/// [startVideoId]: mở đúng short đã bấm từ kệ Shorts (route /shorts?start=<id>).
-///   Nếu short đó chưa có trong trang đầu, gọi VideoService.detail(startVideoId) và đặt nó lên đầu danh sách.
-/// Gợi ý: PageView(scrollDirection: Axis.vertical) + VideoPlayerController, preload 1-2 video kế tiếp,
-///   dispose controller khi đã cách xa để không tràn bộ nhớ, dừng video khi đổi tab.
-/// Chi tiết: docs/tasks/NGUOI-2.md
-class ShortsScreen extends StatelessWidget {
+class ShortsScreen extends StatefulWidget {
   final int? startVideoId;
 
   const ShortsScreen({super.key, this.startVideoId});
 
   @override
+  State<ShortsScreen> createState() => _ShortsScreenState();
+}
+
+class _ShortsScreenState extends State<ShortsScreen> with WidgetsBindingObserver {
+  late PageController _pageController;
+  final _shorts = <Video>[];
+  final Map<int, VideoPlayerController> _controllers = {};
+  final Set<int> _visitedIndices = {};
+
+  int _currentPage = 0;
+  int _page = 0;
+  bool _hasMore = true;
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _pageController = PageController();
+    _loadInitialShorts();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _pageController.dispose();
+    _disposeAllControllers();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      _controllers[_currentPage]?.pause();
+    }
+  }
+
+  void _disposeAllControllers() {
+    for (final controller in _controllers.values) {
+      controller.dispose();
+    }
+    _controllers.clear();
+  }
+
+  Future<void> _loadInitialShorts() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final videoService = context.read<VideoService>();
+      final res = await videoService.shorts(page: 0, size: 10);
+
+      if (!mounted) return;
+
+      final items = List<Video>.from(res.items);
+
+      // Nếu mở từ kệ Shorts bằng startVideoId
+      int initialIndex = 0;
+      if (widget.startVideoId != null) {
+        final existingIdx = items.indexWhere((s) => s.id == widget.startVideoId);
+        if (existingIdx != -1) {
+          initialIndex = existingIdx;
+        } else {
+          try {
+            final startVideo = await videoService.detail(widget.startVideoId!);
+            items.insert(0, startVideo);
+            initialIndex = 0;
+          } catch (_) {
+            // Không tìm thấy video chi tiết thì vẫn phát danh sách mặc định
+          }
+        }
+      }
+
+      setState(() {
+        _shorts.addAll(items);
+        _hasMore = res.hasMore;
+        _page = 1;
+        _currentPage = initialIndex;
+        _loading = false;
+      });
+
+      _pageController = PageController(initialPage: initialIndex);
+
+      // Khởi tạo controller cho video hiện tại và preload video kế tiếp
+      _initAndPlayController(initialIndex);
+      if (initialIndex + 1 < _shorts.length) {
+        _initController(initialIndex + 1);
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Không thể tải Shorts. Vui lòng thử lại';
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _loadMoreShorts() async {
+    if (_loading || !_hasMore) return;
+
+    try {
+      final res = await context.read<VideoService>().shorts(page: _page, size: 10);
+      if (!mounted) return;
+
+      setState(() {
+        _shorts.addAll(res.items);
+        _hasMore = res.hasMore;
+        _page++;
+      });
+    } catch (_) {
+      // Bỏ qua lỗi ngầm khi cuộn tải thêm
+    }
+  }
+
+  Future<void> _initController(int index) async {
+    if (index < 0 || index >= _shorts.length) return;
+    if (_controllers.containsKey(index)) return;
+
+    final short = _shorts[index];
+    final resolvedUrl = ApiConfig.resolveUrl(short.videoUrl);
+    if (resolvedUrl == null) return;
+
+    try {
+      final controller = VideoPlayerController.networkUrl(Uri.parse(resolvedUrl));
+      await controller.initialize();
+      await controller.setLooping(true);
+
+      if (!mounted) {
+        controller.dispose();
+        return;
+      }
+
+      setState(() {
+        _controllers[index] = controller;
+      });
+    } catch (_) {
+      // Lỗi nạp video
+    }
+  }
+
+  Future<void> _initAndPlayController(int index) async {
+    if (!_controllers.containsKey(index)) {
+      await _initController(index);
+    }
+
+    if (!mounted) return;
+    final controller = _controllers[index];
+    if (controller != null && controller.value.isInitialized) {
+      controller.play();
+
+      // Tăng view đúng 1 lần khi bắt đầu xem
+      if (_visitedIndices.add(index)) {
+        try {
+          context.read<VideoService>().addView(_shorts[index].id);
+        } catch (_) {}
+      }
+    }
+  }
+
+  void _onPageChanged(int index) {
+    // 1. Tạm dừng video cũ
+    _controllers[_currentPage]?.pause();
+
+    _currentPage = index;
+
+    // 2. Phát video mới
+    _initAndPlayController(index);
+
+    // 3. Preload video kế tiếp
+    if (index + 1 < _shorts.length) {
+      _initController(index + 1);
+    }
+
+    // 4. Giải phóng controller cách xa quá 1 trang (đảm bảo chống tràn RAM)
+    final keysToRemove = <int>[];
+    for (final pageIdx in _controllers.keys) {
+      if ((pageIdx - index).abs() > 1) {
+        keysToRemove.add(pageIdx);
+      }
+    }
+
+    for (final key in keysToRemove) {
+      _controllers[key]?.dispose();
+      _controllers.remove(key);
+    }
+
+    // 5. Tải thêm khi còn 3 video chưa xem
+    if (index >= _shorts.length - 3) {
+      _loadMoreShorts();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_loading && _shorts.isEmpty) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(child: CircularProgressIndicator(color: AppColors.accent)),
+      );
+    }
+
+    if (_error != null && _shorts.isEmpty) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: ErrorView(
+          message: _error!,
+          onRetry: _loadInitialShorts,
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.black,
-      body: ScreenPlaceholder(number: '8', title: 'Shorts${startVideoId == null ? '' : ' (bắt đầu #$startVideoId)'}', owner: 'Người 2'),
+      body: PageView.builder(
+        controller: _pageController,
+        scrollDirection: Axis.vertical,
+        itemCount: _shorts.length,
+        onPageChanged: _onPageChanged,
+        itemBuilder: (context, index) {
+          final short = _shorts[index];
+          final controller = _controllers[index];
+
+          return ShortsPageItem(
+            short: short,
+            controller: controller,
+            isCurrent: index == _currentPage,
+            onOpenComments: () => showCommentsSheet(
+              context,
+              short.id,
+              channelId: short.channel.id,
+            ),
+          );
+        },
+      ),
     );
   }
 }
