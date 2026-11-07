@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vtube/app/routes.dart';
+import 'package:vtube/core/network/api_exception.dart';
+import 'package:vtube/data/models/models.dart';
 
 import 'subscriptions_test_helpers.dart';
 
@@ -123,7 +127,7 @@ void main() {
       expect(channelService.lastFeedPage, 0);
     });
 
-    testWidgets('Tài khoản chưa đăng ký kênh nào: hiện EmptyView với nút Khám phá', (tester) async {
+    testWidgets('Tài khoản chưa đăng ký kênh nào: hiện EmptyView với nút Khám phá kênh', (tester) async {
       channelService.returnSubscriptions = [];
       String? pushedRoute;
 
@@ -135,9 +139,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Hãy đăng ký kênh để xem video mới nhất tại đây'), findsOneWidget);
-      expect(find.text('Khám phá'), findsOneWidget);
+      expect(find.text('Khám phá kênh'), findsOneWidget);
 
-      await tester.tap(find.text('Khám phá'));
+      await tester.tap(find.text('Khám phá kênh'));
       await tester.pumpAndSettle();
 
       expect(pushedRoute, AppRoutes.home);
@@ -183,6 +187,111 @@ void main() {
       expect(channelService.unsubscribeCalls, 1);
       expect(channelService.lastUnsubscribeId, 1);
       expect(find.byKey(const Key('all_sub_channel_1')), findsNothing);
+    });
+
+    testWidgets('Bấm vào Short trong feed điều hướng tới AppRoutes.shortsAt(videoId)', (tester) async {
+      String? pushedRoute;
+      channelService.returnFeed = const PageResult(
+        items: [
+          Video(
+            id: 99,
+            title: 'Short hài hước',
+            videoUrl: '/shorts/99.mp4',
+            thumbnailUrl: '/thumbs/99.jpg',
+            durationSeconds: 45,
+            viewCount: 15000,
+            isShort: true,
+            isLive: false,
+            publishedAt: '2026-10-02T00:00:00Z',
+            channel: ChannelBrief(id: 1, name: 'Vietnam Vibes', handle: 'vietnamvibes'),
+          ),
+        ],
+        page: 0,
+        size: 20,
+        hasMore: false,
+      );
+
+      await tester.pumpWidget(buildTestSubscriptionsScreen(
+        channelService: channelService,
+        isLoggedIn: true,
+        onPushed: (route) => pushedRoute = route,
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('video_card_large_99')));
+      await tester.pumpAndSettle();
+
+      expect(pushedRoute, AppRoutes.shortsAt(99));
+    });
+
+    testWidgets('Lỗi tải feed hiển thị ErrorView và cho phép bấm Thử lại', (tester) async {
+      channelService.feedError = const ApiException('Lỗi kết nối máy chủ');
+
+      await tester.pumpWidget(buildTestSubscriptionsScreen(
+        channelService: channelService,
+        isLoggedIn: true,
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Lỗi kết nối máy chủ'), findsOneWidget);
+      expect(find.text('Thử lại'), findsOneWidget);
+
+      channelService.feedError = null;
+      await tester.tap(find.text('Thử lại'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ẩm thực đêm Hà Nội'), findsOneWidget);
+    });
+
+    testWidgets('Race condition: request feed cũ về chậm hơn request mới thì kết quả cũ bị bỏ qua', (tester) async {
+      await tester.pumpWidget(buildTestSubscriptionsScreen(
+        channelService: channelService,
+        isLoggedIn: true,
+      ));
+      await tester.pumpAndSettle();
+
+      // Giả lập 2 request liên tiếp: bấm "Video" rồi nhanh chóng bấm "Shorts"
+      var delayedCompleter = Completer<PageResult<Video>>();
+      channelService.customFeedHandler = ({channelId, type, page, size}) {
+        if (type == 'video') {
+          return delayedCompleter.future;
+        } else {
+          return Future.value(PageResult(
+            items: [
+              testFeedVideo(id: 101, title: 'Video mới nhất của Shorts tab'),
+            ],
+            page: 0,
+            size: 20,
+            hasMore: false,
+          ));
+        }
+      };
+
+      // 1. Bấm chip "Video" (chưa hoàn thành vì delayedCompleter)
+      await tester.tap(find.text('Video'));
+      await tester.pump(); // Render loading feed
+
+      // 2. Nhanh chóng bấm chip "Shorts" (hoàn thành ngay)
+      await tester.tap(find.text('Shorts'));
+      await tester.pumpAndSettle();
+
+      // Lúc này màn hình hiển thị kết quả của "Shorts"
+      expect(find.text('Video mới nhất của Shorts tab'), findsOneWidget);
+
+      // 3. Request cũ của "Video" mới hoàn thành
+      delayedCompleter.complete(PageResult(
+        items: [
+          testFeedVideo(id: 102, title: 'Video cũ bị trễ từ Video tab'),
+        ],
+        page: 0,
+        size: 20,
+        hasMore: false,
+      ));
+      await tester.pumpAndSettle();
+
+      // Kết quả cũ của "Video" không được đè lên hoặc nối vào
+      expect(find.text('Video cũ bị trễ từ Video tab'), findsNothing);
+      expect(find.text('Video mới nhất của Shorts tab'), findsOneWidget);
     });
   });
 }

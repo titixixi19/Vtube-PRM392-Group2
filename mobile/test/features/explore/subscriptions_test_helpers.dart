@@ -79,6 +79,7 @@ class FakeChannelService extends ChannelService {
   int? lastFeedChannelId;
   String? lastFeedType;
   int? lastFeedPage;
+  Future<PageResult<Video>> Function({int? channelId, String? type, int? page, int? size})? customFeedHandler;
   PageResult<Video> returnFeed = PageResult(
     items: [
       testFeedVideo(id: 1, title: 'Ẩm thực đêm Hà Nội', isLive: true, channelName: 'Ẩm Thực Bụi', channelId: 2),
@@ -112,6 +113,9 @@ class FakeChannelService extends ChannelService {
     lastFeedChannelId = channelId;
     lastFeedType = type;
     lastFeedPage = page;
+    if (customFeedHandler != null) {
+      return customFeedHandler!(channelId: channelId, type: type, page: page, size: size);
+    }
     if (feedError != null) throw feedError!;
     return returnFeed;
   }
@@ -206,6 +210,14 @@ Widget buildTestSubscriptionsScreen({
       GoRoute(
         path: AppRoutes.subscriptions,
         builder: (context, state) => const SubscriptionsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.shorts,
+        builder: (context, state) {
+          final start = state.uri.queryParameters['start'];
+          onPushed?.call('${AppRoutes.shorts}?start=$start');
+          return Scaffold(body: Text('ShortsScreen: $start'));
+        },
       ),
       GoRoute(
         path: '/video/:id',

@@ -210,8 +210,11 @@ class _AllSubscriptionsScreenState extends State<AllSubscriptionsScreen> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: true,
-      onPopInvokedWithResult: (didPop, result) {},
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        Navigator.of(context).pop(_hasChanged);
+      },
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(

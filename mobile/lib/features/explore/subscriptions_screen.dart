@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../app/routes.dart';
 import '../../app/theme.dart';
 import '../../core/auth/auth_provider.dart';
+import '../../core/auth/require_login.dart';
 import '../../core/network/api_exception.dart';
 import '../../data/models/models.dart';
 import '../../data/services/channel_service.dart';
@@ -52,7 +53,9 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
   bool _loadingChannels = true;
   bool _loadingFeed = true;
   bool _loadingMore = false;
-  String? _error;
+  String? _channelsError;
+  String? _feedError;
+  int _feedReqId = 0;
 
   bool? _lastLoggedIn;
 
@@ -71,6 +74,8 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
       if (isLoggedIn) {
         _loadData();
       } else {
+        _selectedChannelId = null;
+        _selectedChipIndex = 0;
         _channels.clear();
         _videos.clear();
       }
@@ -100,7 +105,7 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
   Future<void> _loadChannels() async {
     setState(() {
       _loadingChannels = true;
-      _error = null;
+      _channelsError = null;
     });
 
     try {
@@ -109,31 +114,37 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
       setState(() {
         _channels.clear();
         _channels.addAll(res);
+        if (_selectedChannelId != null && !_channels.any((c) => c.channel.id == _selectedChannelId)) {
+          _selectedChannelId = null;
+        }
         _loadingChannels = false;
       });
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.message;
+        _channelsError = e.message;
         _loadingChannels = false;
       });
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _error = 'Không thể tải danh sách kênh đăng ký.';
+        _channelsError = 'Không thể tải danh sách kênh đăng ký.';
         _loadingChannels = false;
       });
     }
   }
 
-  Future<void> _refreshFeed() async {
-    setState(() {
-      _loadingFeed = true;
-      _error = null;
-      _page = 0;
-      _videos.clear();
-      _hasMore = true;
-    });
+  Future<void> _refreshFeed({bool silent = false}) async {
+    final reqId = ++_feedReqId;
+    if (!silent) {
+      setState(() {
+        _loadingFeed = true;
+        _feedError = null;
+        _page = 0;
+        _videos.clear();
+        _hasMore = true;
+      });
+    }
 
     try {
       final res = await context.read<ChannelService>().subscriptionFeed(
@@ -141,30 +152,35 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
             type: _chipTypes[_selectedChipIndex],
             page: 0,
           );
-      if (!mounted) return;
+      if (!mounted || reqId != _feedReqId) return;
       setState(() {
+        if (silent) _videos.clear();
         _videos.addAll(res.items);
         _page = res.page;
         _hasMore = res.hasMore;
         _loadingFeed = false;
+        _feedError = null;
       });
     } on ApiException catch (e) {
-      if (!mounted) return;
+      if (!mounted || reqId != _feedReqId) return;
       setState(() {
-        _error = e.message;
+        if (!silent) _feedError = e.message;
         _loadingFeed = false;
       });
+      if (silent) showSnack(context, e.message);
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || reqId != _feedReqId) return;
       setState(() {
-        _error = 'Không thể tải video từ các kênh đăng ký.';
+        if (!silent) _feedError = 'Không thể tải video từ các kênh đăng ký.';
         _loadingFeed = false;
       });
+      if (silent) showSnack(context, 'Không thể tải video từ các kênh đăng ký.');
     }
   }
 
   Future<void> _loadMore() async {
     if (_loadingFeed || _loadingMore || !_hasMore) return;
+    final reqId = _feedReqId;
     setState(() => _loadingMore = true);
 
     try {
@@ -174,7 +190,7 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
             type: _chipTypes[_selectedChipIndex],
             page: nextPage,
           );
-      if (!mounted) return;
+      if (!mounted || reqId != _feedReqId) return;
       setState(() {
         _videos.addAll(res.items);
         _page = res.page;
@@ -182,8 +198,12 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
         _loadingMore = false;
       });
     } catch (_) {
-      if (!mounted) return;
-      setState(() => _loadingMore = false);
+      if (!mounted || reqId != _feedReqId) return;
+      setState(() {
+        _loadingMore = false;
+        _hasMore = false;
+      });
+      showSnack(context, 'Không thể tải thêm video');
     }
   }
 
@@ -238,21 +258,24 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
       return const LoadingView();
     }
 
-    if (_error != null && _channels.isEmpty && _videos.isEmpty) {
-      return ErrorView(message: _error!, onRetry: _loadData);
+    if (_channelsError != null && _channels.isEmpty) {
+      return ErrorView(message: _channelsError!, onRetry: _loadData);
     }
 
     if (!_loadingChannels && _channels.isEmpty) {
       return EmptyView(
         icon: Icons.subscriptions_outlined,
         title: 'Hãy đăng ký kênh để xem video mới nhất tại đây',
-        actionLabel: 'Khám phá',
+        actionLabel: 'Khám phá kênh',
         onAction: () => context.go(AppRoutes.home),
       );
     }
 
     return RefreshIndicator(
-      onRefresh: _loadData,
+      onRefresh: () async {
+        await _loadChannels();
+        await _refreshFeed(silent: true);
+      },
       color: AppColors.accent,
       backgroundColor: AppColors.surfaceContainer,
       child: ListView(
@@ -283,6 +306,14 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
               padding: EdgeInsets.all(40),
               child: LoadingView(),
             )
+          else if (_feedError != null && _videos.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(32),
+              child: ErrorView(
+                message: _feedError!,
+                onRetry: _refreshFeed,
+              ),
+            )
           else if (_videos.isEmpty)
             const Padding(
               padding: EdgeInsets.all(32),
@@ -297,7 +328,7 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
               VideoCardLarge(
                 key: Key('video_card_large_${v.id}'),
                 video: v,
-                onTap: () => context.push(AppRoutes.video(v.id)),
+                onTap: () => v.isShort ? context.push(AppRoutes.shortsAt(v.id)) : context.push(AppRoutes.video(v.id)),
                 onChannelTap: () => context.push(AppRoutes.channel(v.channel.id)),
                 onMore: () => showVideoOptionsSheet(
                   context,
