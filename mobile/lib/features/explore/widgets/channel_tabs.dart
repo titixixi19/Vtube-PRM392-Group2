@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../app/routes.dart';
 import '../../../app/theme.dart';
+import '../../../core/auth/require_login.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../data/models/models.dart';
 import '../../../data/services/channel_service.dart';
@@ -175,6 +176,7 @@ class _ChannelVideosTabState extends State<ChannelVideosTab> with AutomaticKeepA
   List<Video> _videos = [];
   int _page = 0;
   bool _hasMore = false;
+  int _reqId = 0;
 
   @override
   bool get wantKeepAlive => true;
@@ -186,6 +188,7 @@ class _ChannelVideosTabState extends State<ChannelVideosTab> with AutomaticKeepA
   }
 
   Future<void> _loadVideos({bool reset = false}) async {
+    final currentReqId = reset ? ++_reqId : _reqId;
     if (reset) {
       setState(() {
         _isLoading = true;
@@ -206,7 +209,7 @@ class _ChannelVideosTabState extends State<ChannelVideosTab> with AutomaticKeepA
             size: 20,
           );
 
-      if (!mounted) return;
+      if (!mounted || currentReqId != _reqId) return;
       setState(() {
         if (reset) {
           _videos = res.items;
@@ -219,12 +222,19 @@ class _ChannelVideosTabState extends State<ChannelVideosTab> with AutomaticKeepA
         _isLoadingMore = false;
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || currentReqId != _reqId) return;
       setState(() {
-        if (reset) _error = 'Không thể tải danh sách video';
+        if (reset) {
+          _error = 'Không thể tải danh sách video';
+        } else {
+          _hasMore = false;
+        }
         _isLoading = false;
         _isLoadingMore = false;
       });
+      if (!reset) {
+        showSnack(context, 'Không thể tải thêm video');
+      }
     }
   }
 
@@ -323,6 +333,7 @@ class _ChannelShortsTabState extends State<ChannelShortsTab> with AutomaticKeepA
   List<Video> _shorts = [];
   int _page = 0;
   bool _hasMore = false;
+  int _reqId = 0;
 
   @override
   bool get wantKeepAlive => true;
@@ -334,6 +345,7 @@ class _ChannelShortsTabState extends State<ChannelShortsTab> with AutomaticKeepA
   }
 
   Future<void> _loadShorts({bool reset = false}) async {
+    final currentReqId = reset ? ++_reqId : _reqId;
     if (reset) {
       setState(() {
         _isLoading = true;
@@ -353,7 +365,7 @@ class _ChannelShortsTabState extends State<ChannelShortsTab> with AutomaticKeepA
             size: 30,
           );
 
-      if (!mounted) return;
+      if (!mounted || currentReqId != _reqId) return;
       setState(() {
         if (reset) {
           _shorts = res.items;
@@ -366,12 +378,19 @@ class _ChannelShortsTabState extends State<ChannelShortsTab> with AutomaticKeepA
         _isLoadingMore = false;
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || currentReqId != _reqId) return;
       setState(() {
-        if (reset) _error = 'Không thể tải danh sách Shorts';
+        if (reset) {
+          _error = 'Không thể tải danh sách Shorts';
+        } else {
+          _hasMore = false;
+        }
         _isLoading = false;
         _isLoadingMore = false;
       });
+      if (!reset) {
+        showSnack(context, 'Không thể tải thêm video ngắn');
+      }
     }
   }
 
@@ -434,12 +453,12 @@ class _ChannelShortsTabState extends State<ChannelShortsTab> with AutomaticKeepA
                 fit: StackFit.expand,
                 children: [
                   AppNetworkImage(url: s.thumbnailUrl),
-                  const DecoratedBox(
+                  DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.center,
                         end: Alignment.bottomCenter,
-                        colors: [Colors.transparent, Colors.black87],
+                        colors: [Colors.transparent, AppColors.background.withValues(alpha: 0.85)],
                       ),
                     ),
                   ),
@@ -454,12 +473,13 @@ class _ChannelShortsTabState extends State<ChannelShortsTab> with AutomaticKeepA
                           s.title,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
+                          style:
+                              const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           Fmt.views(s.viewCount),
-                          style: const TextStyle(fontSize: 10, color: Colors.white70),
+                          style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
                         ),
                       ],
                     ),
@@ -675,15 +695,19 @@ class _PlaylistTile extends StatelessWidget {
                         bottom: 0,
                         width: 48,
                         child: Container(
-                          color: Colors.black.withValues(alpha: 0.65),
+                          color: AppColors.surface.withValues(alpha: 0.75),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(Icons.playlist_play, color: Colors.white, size: 20),
+                              const Icon(Icons.playlist_play, color: AppColors.textPrimary, size: 20),
                               const SizedBox(height: 2),
                               Text(
                                 '${playlist.videoCount}',
-                                style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                                style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ],
                           ),

@@ -5,13 +5,13 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../app/routes.dart';
 import '../../app/theme.dart';
+import '../../core/auth/auth_provider.dart';
 import '../../core/auth/require_login.dart';
 import '../../core/network/api_exception.dart';
 import '../../data/models/models.dart';
 import '../../data/services/channel_service.dart';
 import '../../shared/widgets/state_views.dart';
 import 'widgets/channel_about_sheet.dart';
-import 'widgets/channel_edit_sheet.dart';
 import 'widgets/channel_header.dart';
 import 'widgets/channel_tabs.dart';
 
@@ -32,6 +32,8 @@ class _ChannelScreenState extends State<ChannelScreen> with SingleTickerProvider
   late final TabController _tabController;
   Channel? _channel;
   bool _isLoading = true;
+  bool _isNotFound = false;
+  bool _isSubscribing = false;
   String? _error;
 
   @override
@@ -52,6 +54,7 @@ class _ChannelScreenState extends State<ChannelScreen> with SingleTickerProvider
       setState(() {
         _isLoading = true;
         _error = null;
+        _isNotFound = false;
       });
     }
 
@@ -62,44 +65,58 @@ class _ChannelScreenState extends State<ChannelScreen> with SingleTickerProvider
         _channel = ch;
         _isLoading = false;
         _error = null;
+        _isNotFound = false;
       });
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
         _error = e.message;
+        _isNotFound = e.statusCode == 404;
         _isLoading = false;
       });
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _error = 'Kênh này không có sẵn';
+        _error = 'Không thể tải thông tin kênh';
+        _isNotFound = false;
         _isLoading = false;
       });
     }
   }
 
   Future<void> _toggleSubscribe() async {
-    if (_channel == null) return;
+    if (_channel == null || _isSubscribing) return;
+
+    final auth = context.read<AuthProvider>();
+    final wasLoggedIn = auth.isLoggedIn;
     if (!await requireLogin(context)) return;
     if (!mounted) return;
 
-    final service = context.read<ChannelService>();
-    final isSub = _channel!.subscribed;
+    if (!wasLoggedIn) {
+      // Vừa đăng nhập xong: tải lại dữ liệu kênh để cập nhật quyền sở hữu (mine) và subscribed
+      await _loadChannel(silent: true);
+      return;
+    }
 
+    _isSubscribing = true;
+    final previousChannel = _channel!;
+    final willSubscribe = !previousChannel.subscribed;
+    final newSubCount = willSubscribe
+        ? previousChannel.subscriberCount + 1
+        : (previousChannel.subscriberCount > 0 ? previousChannel.subscriberCount - 1 : 0);
+
+    // Optimistic update
+    setState(() {
+      _channel = previousChannel.copyWith(
+        subscribed: willSubscribe,
+        subscriberCount: newSubCount,
+      );
+    });
+
+    final service = context.read<ChannelService>();
     try {
-      if (isSub) {
-        final res = await service.unsubscribe(_channel!.id);
-        if (!mounted) return;
-        setState(() {
-          _channel = _channel!.copyWith(
-            subscribed: false,
-            subscriberCount: res.subscriberCount,
-            notifyMode: res.notifyMode,
-          );
-        });
-        showSnack(context, 'Đã hủy đăng ký kênh');
-      } else {
-        final res = await service.subscribe(_channel!.id);
+      if (willSubscribe) {
+        final res = await service.subscribe(previousChannel.id);
         if (!mounted) return;
         setState(() {
           _channel = _channel!.copyWith(
@@ -109,11 +126,28 @@ class _ChannelScreenState extends State<ChannelScreen> with SingleTickerProvider
           );
         });
         showSnack(context, 'Đã đăng ký kênh');
+      } else {
+        final res = await service.unsubscribe(previousChannel.id);
+        if (!mounted) return;
+        setState(() {
+          _channel = _channel!.copyWith(
+            subscribed: false,
+            subscriberCount: res.subscriberCount,
+            notifyMode: res.notifyMode,
+          );
+        });
+        showSnack(context, 'Đã hủy đăng ký kênh');
       }
-    } on ApiException catch (e) {
-      if (mounted) showSnack(context, e.message);
-    } catch (_) {
-      if (mounted) showSnack(context, 'Không thể thay đổi trạng thái đăng ký');
+    } catch (e) {
+      if (!mounted) return;
+      // Rollback lại trạng thái ban đầu nếu lỗi
+      setState(() {
+        _channel = previousChannel;
+      });
+      final msg = e is ApiException ? e.message : 'Không thể thay đổi trạng thái đăng ký';
+      showSnack(context, msg);
+    } finally {
+      _isSubscribing = false;
     }
   }
 
@@ -136,10 +170,9 @@ class _ChannelScreenState extends State<ChannelScreen> with SingleTickerProvider
 
   Future<void> _onCustomizeChannel() async {
     if (_channel == null) return;
-    final updated = await showChannelEditSheet(context, _channel!);
-    if (updated != null && mounted) {
-      setState(() => _channel = updated);
-      showSnack(context, 'Đã cập nhật thông tin kênh');
+    await context.push(AppRoutes.editProfile);
+    if (mounted) {
+      await _loadChannel(silent: true);
     }
   }
 
@@ -161,7 +194,7 @@ class _ChannelScreenState extends State<ChannelScreen> with SingleTickerProvider
       );
     }
 
-    if (_error != null || _channel == null) {
+    if (_isNotFound) {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Trang kênh'),
@@ -169,9 +202,20 @@ class _ChannelScreenState extends State<ChannelScreen> with SingleTickerProvider
         body: EmptyView(
           icon: Icons.error_outline,
           title: 'Kênh này không có sẵn',
-          message: (_error != null && _error != 'Kênh này không có sẵn') ? _error : null,
           actionLabel: 'Quay lại',
           onAction: () => Navigator.of(context).maybePop(),
+        ),
+      );
+    }
+
+    if (_error != null || _channel == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Trang kênh'),
+        ),
+        body: ErrorView(
+          message: _error ?? 'Không thể tải thông tin kênh',
+          onRetry: _loadChannel,
         ),
       );
     }

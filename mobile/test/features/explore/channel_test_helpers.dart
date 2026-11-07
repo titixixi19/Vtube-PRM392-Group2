@@ -106,10 +106,12 @@ class FakeChannelService extends ChannelService {
   int getCalls = 0;
   int videosCalls = 0;
   String lastSort = 'newest';
+  Future<PageResult<Video>> Function(int id, {String? sort, int? page, int? size})? customVideosHandler;
   int shortsCalls = 0;
   int playlistsCalls = 0;
   int updateMineCalls = 0;
   int subscribeCalls = 0;
+  Future<SubscriptionResult> Function(int id, {String? notifyMode})? customSubscribeHandler;
   int unsubscribeCalls = 0;
   ApiException? error;
 
@@ -126,6 +128,9 @@ class FakeChannelService extends ChannelService {
   Future<PageResult<Video>> videos(int id, {String sort = 'newest', int page = 0, int size = 20}) async {
     videosCalls++;
     lastSort = sort;
+    if (customVideosHandler != null) {
+      return customVideosHandler!(id, sort: sort, page: page, size: size);
+    }
     if (id == 3) return PageResult(items: [], page: page, size: size, hasMore: false);
 
     final items = [
@@ -186,6 +191,10 @@ class FakeChannelService extends ChannelService {
   @override
   Future<SubscriptionResult> subscribe(int id, {String? notifyMode}) async {
     subscribeCalls++;
+    if (customSubscribeHandler != null) {
+      return customSubscribeHandler!(id, notifyMode: notifyMode);
+    }
+    if (error != null) throw error!;
     final cur = channels[id]!;
     final newCount = cur.subscriberCount + 1;
     channels[id] = Channel(
@@ -211,6 +220,7 @@ class FakeChannelService extends ChannelService {
   @override
   Future<SubscriptionResult> unsubscribe(int id) async {
     unsubscribeCalls++;
+    if (error != null) throw error!;
     final cur = channels[id]!;
     final newCount = (cur.subscriberCount - 1).clamp(0, 999999999);
     channels[id] = Channel(
@@ -336,6 +346,13 @@ Future<void> pumpChannelScreen(
         builder: (context, state) {
           onNavigate?.call(AppRoutes.upload);
           return const Scaffold(body: Text('MÀN UPLOAD'));
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.editProfile,
+        builder: (context, state) {
+          onNavigate?.call(AppRoutes.editProfile);
+          return const Scaffold(body: Text('MÀN EDIT PROFILE'));
         },
       ),
       GoRoute(
