@@ -175,7 +175,7 @@ class _VideoScreenState extends State<VideoScreen> {
                     VideoInfoSection(
                       video: video,
                       previewComment: _previewComment,
-                      onOpenComments: () => showCommentsSheet(context, video.id),
+                      onOpenComments: () => showCommentsSheet(context, video.id, channelId: video.channel.id),
                     ),
                     const Divider(height: 1),
                     RelatedVideosSection(videoId: video.id),
