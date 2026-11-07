@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vtube/core/network/api_exception.dart';
@@ -203,6 +205,57 @@ void main() {
 
       expect(searchService.searchCalls, 2);
       expect(searchService.lastSearchPage, 0);
+    });
+
+    testWidgets('Response cũ đè lên response mới (race condition): kết quả cũ về sau không đè kết quả mới',
+        (tester) async {
+      final compChannel = Completer<SearchResult>();
+      final compVideo = Completer<SearchResult>();
+
+      searchService.searchCompleters['channel'] = compChannel;
+      searchService.searchCompleters['video'] = compVideo;
+
+      await tester.pumpWidget(buildTestSearchResultsScreen(
+        searchService: searchService,
+        query: 'flutter',
+      ));
+      await tester.pumpAndSettle();
+
+      // Đổi sang tab Kênh (bắt đầu request 1 cho channel)
+      await tester.tap(find.text('Kênh'));
+      await tester.pump();
+
+      // Đổi tiếp sang tab Video (bắt đầu request 2 cho video)
+      await tester.tap(find.text('Video'));
+      await tester.pump();
+
+      // Request 2 (video) trả về trước
+      compVideo.complete(SearchResult(
+        channels: [],
+        videos: [testVideo(id: 99, title: 'Video Mới Nhất')],
+        shorts: [],
+        playlists: [],
+        page: 0,
+        hasMore: false,
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Video Mới Nhất'), findsOneWidget);
+
+      // Request 1 (channel) về sau request 2
+      compChannel.complete(SearchResult(
+        channels: [testChannel(id: 88, name: 'Kênh Cũ Về Sau')],
+        videos: [],
+        shorts: [],
+        playlists: [],
+        page: 0,
+        hasMore: false,
+      ));
+      await tester.pumpAndSettle();
+
+      // Kết quả cũ của channel bị bỏ qua, vẫn giữ video mới
+      expect(find.text('Video Mới Nhất'), findsOneWidget);
+      expect(find.text('Kênh Cũ Về Sau'), findsNothing);
     });
   });
 }

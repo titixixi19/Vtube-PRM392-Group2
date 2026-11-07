@@ -45,7 +45,7 @@ class PlaylistSearchCard extends StatelessWidget {
                               const Icon(Icons.playlist_play, color: Colors.white, size: 22),
                               const SizedBox(height: 2),
                               Text(
-                                '${playlist.videoCount}',
+                                '${playlist.videoCount} video',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 12,

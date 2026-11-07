@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 
 import '../../app/routes.dart';
 import '../../app/theme.dart';
+import '../../core/auth/require_login.dart';
 import '../../core/network/api_exception.dart';
+import '../../core/utils/formatters.dart';
 import '../../data/models/models.dart';
 import '../../data/services/search_service.dart';
 import '../../shared/widgets/app_network_image.dart';
@@ -54,6 +56,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
   bool _loading = false;
   bool _loadingMore = false;
   String? _error;
+  int _reqId = 0;
 
   @override
   void initState() {
@@ -86,16 +89,19 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     }
   }
 
-  Future<void> _refresh() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-      _page = 0;
-      _channels.clear();
-      _videos.clear();
-      _shorts.clear();
-      _playlists.clear();
-    });
+  Future<void> _refresh({bool silent = false}) async {
+    final reqId = ++_reqId;
+    if (!silent) {
+      setState(() {
+        _loading = true;
+        _error = null;
+        _page = 0;
+        _channels.clear();
+        _videos.clear();
+        _shorts.clear();
+        _playlists.clear();
+      });
+    }
 
     try {
       final res = await context.read<SearchService>().search(
@@ -103,8 +109,14 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
             filters: _filters,
             page: 0,
           );
-      if (!mounted) return;
+      if (!mounted || reqId != _reqId) return;
       setState(() {
+        if (silent) {
+          _channels.clear();
+          _videos.clear();
+          _shorts.clear();
+          _playlists.clear();
+        }
         _channels.addAll(res.channels);
         _videos.addAll(res.videos);
         _shorts.addAll(res.shorts);
@@ -112,24 +124,28 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
         _page = res.page;
         _hasMore = res.hasMore;
         _loading = false;
+        _error = null;
       });
     } on ApiException catch (e) {
-      if (!mounted) return;
+      if (!mounted || reqId != _reqId) return;
       setState(() {
-        _error = e.message;
+        if (!silent) _error = e.message;
         _loading = false;
       });
+      if (silent) showSnack(context, e.message);
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || reqId != _reqId) return;
       setState(() {
-        _error = 'Không thể tải kết quả tìm kiếm. Vui lòng thử lại.';
+        if (!silent) _error = 'Không thể tải kết quả tìm kiếm. Vui lòng thử lại.';
         _loading = false;
       });
+      if (silent) showSnack(context, 'Không thể tải kết quả tìm kiếm. Vui lòng thử lại.');
     }
   }
 
   Future<void> _loadMore() async {
     if (_loading || _loadingMore || !_hasMore) return;
+    final reqId = _reqId;
     setState(() => _loadingMore = true);
 
     try {
@@ -139,7 +155,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
             filters: _filters,
             page: nextPage,
           );
-      if (!mounted) return;
+      if (!mounted || reqId != _reqId) return;
       setState(() {
         if (_filters.type == 'channel') {
           _channels.addAll(res.channels);
@@ -155,8 +171,12 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
         _loadingMore = false;
       });
     } catch (_) {
-      if (!mounted) return;
-      setState(() => _loadingMore = false);
+      if (!mounted || reqId != _reqId) return;
+      setState(() {
+        _loadingMore = false;
+        _hasMore = false;
+      });
+      showSnack(context, 'Không thể tải thêm kết quả tìm kiếm');
     }
   }
 
@@ -317,7 +337,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     }
 
     return RefreshIndicator(
-      onRefresh: _refresh,
+      onRefresh: () => _refresh(silent: true),
       color: AppColors.accent,
       backgroundColor: AppColors.surfaceContainer,
       child: ListView(
@@ -491,7 +511,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${s.viewCount} lượt xem',
+                          Fmt.views(s.viewCount),
                           style: const TextStyle(
                             fontSize: 11,
                             color: AppColors.textSecondary,

@@ -95,6 +95,7 @@ class FakeSearchService extends SearchService {
   ApiException? suggestionsError;
 
   final Map<String, Completer<SearchSuggestions>> queryCompleters = {};
+  final Map<String, Completer<SearchResult>> searchCompleters = {};
 
   int deleteCalls = 0;
   String? lastDeletedKeyword;
@@ -139,6 +140,9 @@ class FakeSearchService extends SearchService {
     lastSearchQuery = q;
     lastSearchFilters = filters;
     lastSearchPage = page;
+    if (searchCompleters.containsKey(filters.type)) {
+      return await searchCompleters[filters.type]!.future;
+    }
     if (searchError != null) throw searchError!;
     return returnSearchResult;
   }
