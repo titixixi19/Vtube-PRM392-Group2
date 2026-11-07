@@ -94,6 +94,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     if (!silent) {
       setState(() {
         _loading = true;
+        _loadingMore = false;
         _error = null;
         _page = 0;
         _channels.clear();
@@ -101,6 +102,8 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
         _shorts.clear();
         _playlists.clear();
       });
+    } else {
+      _loadingMore = false;
     }
 
     try {
@@ -124,6 +127,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
         _page = res.page;
         _hasMore = res.hasMore;
         _loading = false;
+        _loadingMore = false;
         _error = null;
       });
     } on ApiException catch (e) {
@@ -131,6 +135,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
       setState(() {
         if (!silent) _error = e.message;
         _loading = false;
+        _loadingMore = false;
       });
       if (silent) showSnack(context, e.message);
     } catch (_) {
@@ -138,6 +143,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
       setState(() {
         if (!silent) _error = 'Không thể tải kết quả tìm kiếm. Vui lòng thử lại.';
         _loading = false;
+        _loadingMore = false;
       });
       if (silent) showSnack(context, 'Không thể tải kết quả tìm kiếm. Vui lòng thử lại.');
     }

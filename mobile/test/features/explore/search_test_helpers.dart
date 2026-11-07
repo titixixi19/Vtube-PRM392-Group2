@@ -105,6 +105,7 @@ class FakeSearchService extends SearchService {
   String? lastSearchQuery;
   SearchFilters? lastSearchFilters;
   int? lastSearchPage;
+  Future<SearchResult> Function(String q, {SearchFilters filters, int page, int size})? customSearchHandler;
   SearchResult returnSearchResult = SearchResult(
     channels: [testChannel()],
     videos: List.generate(6, (i) => testVideo(id: i + 1, title: 'Flutter Video ${i + 1}')),
@@ -140,6 +141,9 @@ class FakeSearchService extends SearchService {
     lastSearchQuery = q;
     lastSearchFilters = filters;
     lastSearchPage = page;
+    if (customSearchHandler != null) {
+      return customSearchHandler!(q, filters: filters, page: page, size: size);
+    }
     if (searchCompleters.containsKey(filters.type)) {
       return await searchCompleters[filters.type]!.future;
     }

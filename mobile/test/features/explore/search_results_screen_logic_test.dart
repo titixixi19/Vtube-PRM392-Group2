@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vtube/core/network/api_exception.dart';
 import 'package:vtube/data/models/models.dart';
+import 'package:vtube/shared/widgets/chip_bar.dart';
 
 import 'search_test_helpers.dart';
 
@@ -256,6 +257,79 @@ void main() {
       // Kết quả cũ của channel bị bỏ qua, vẫn giữ video mới
       expect(find.text('Video Mới Nhất'), findsOneWidget);
       expect(find.text('Kênh Cũ Về Sau'), findsNothing);
+    });
+
+    testWidgets('loadMore đang chờ → đổi chip → cuộn xuống vẫn tải thêm được', (tester) async {
+      // 1. Khởi tạo danh sách ban đầu với hasMore = true và 20 video
+      final initialVideos = List.generate(20, (i) => testVideo(id: i + 1, title: 'All Video ${i + 1}'));
+      searchService.returnSearchResult = SearchResult(
+        channels: [],
+        videos: initialVideos,
+        shorts: [],
+        playlists: [],
+        page: 0,
+        hasMore: true,
+      );
+
+      await tester.pumpWidget(buildTestSearchResultsScreen(
+        searchService: searchService,
+        query: 'flutter',
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('All Video 1'), findsOneWidget);
+
+      // 2. Giả lập cuộn để kích hoạt loadMore, nhưng request loadMore bị treo (chưa hoàn thành)
+      final loadMoreCompleter = Completer<SearchResult>();
+      searchService.customSearchHandler = (q, {filters = const SearchFilters(), page = 0, size = 20}) {
+        if (page > 0 && filters.type == 'all') {
+          return loadMoreCompleter.future; // loadMore đang treo
+        } else if (filters.type == 'video' && page == 0) {
+          return Future.value(SearchResult(
+            channels: [],
+            videos: List.generate(12, (i) => testVideo(id: 100 + i, title: 'Only Video ${i + 1}')),
+            shorts: [],
+            playlists: [],
+            page: 0,
+            hasMore: true,
+          ));
+        } else if (filters.type == 'video' && page > 0) {
+          return Future.value(SearchResult(
+            channels: [],
+            videos: [testVideo(id: 999, title: 'Video Tải Thêm Thành Công')],
+            shorts: [],
+            playlists: [],
+            page: 1,
+            hasMore: false,
+          ));
+        }
+        return Future.value(const SearchResult(
+          channels: [],
+          videos: [],
+          shorts: [],
+          playlists: [],
+          page: 0,
+          hasMore: false,
+        ));
+      };
+
+      // Kích hoạt loadMore bằng cách cuộn mạnh
+      await tester.fling(find.byKey(const Key('search_results_list_view')), const Offset(0, -1000), 1000);
+      await tester.pump(); // loadMore bắt đầu chạy, _loadingMore = true
+
+      // 3. Đang trong lúc loadMore chờ, người dùng bấm đổi chip sang "Video"
+      await tester.tap(find.descendant(of: find.byType(ChipBar), matching: find.text('Video')));
+      await tester.pumpAndSettle();
+
+      // Màn hình hiển thị danh sách của chip "Video"
+      expect(find.textContaining('Only Video'), findsWidgets);
+
+      // 4. Cuộn xuống tiếp trong tab "Video" để tải thêm
+      await tester.fling(find.byKey(const Key('search_results_list_view')), const Offset(0, -1000), 1000);
+      await tester.pumpAndSettle();
+
+      // Phải tải thêm được trang mới của tab "Video"
+      expect(find.text('Video Tải Thêm Thành Công'), findsOneWidget);
     });
   });
 }
