@@ -293,5 +293,99 @@ void main() {
       expect(find.text('Video cũ bị trễ từ Video tab'), findsNothing);
       expect(find.text('Video mới nhất của Shorts tab'), findsOneWidget);
     });
+
+    testWidgets('loadMore đang chờ → đổi chip → cuộn xuống vẫn tải thêm được', (tester) async {
+      // Feed ban đầu có hasMore = true
+      channelService.returnFeed = PageResult(
+        items: List.generate(4, (i) => testFeedVideo(id: i + 1, title: 'All Feed Video ${i + 1}')),
+        page: 0,
+        size: 10,
+        hasMore: true,
+      );
+
+      await tester.pumpWidget(buildTestSubscriptionsScreen(
+        channelService: channelService,
+        isLoggedIn: true,
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('All Feed Video 1'), findsOneWidget);
+
+      // Giả lập loadMore đang chờ (bị treo)
+      final loadMoreCompleter = Completer<PageResult<Video>>();
+      channelService.customFeedHandler = ({channelId, type, page, size}) {
+        if (type == 'all' && (page ?? 0) > 0) {
+          return loadMoreCompleter.future; // loadMore treo
+        } else if (type == 'video' && (page ?? 0) == 0) {
+          return Future.value(PageResult(
+            items: List.generate(2, (i) => testFeedVideo(id: 100 + i, title: 'Video Tab Item ${i + 1}')),
+            page: 0,
+            size: 10,
+            hasMore: true,
+          ));
+        } else if (type == 'video' && (page ?? 0) > 0) {
+          return Future.value(PageResult(
+            items: [testFeedVideo(id: 999, title: 'Feed Video Tải Thêm Thành Công')],
+            page: 1,
+            size: 10,
+            hasMore: false,
+          ));
+        }
+        return Future.value(const PageResult(items: [], page: 0, size: 20, hasMore: false));
+      };
+
+      // Kích hoạt loadMore bằng cách cuộn nhẹ để _onScroll trigger nhưng ChipBar vẫn trên màn hình
+      await tester.drag(find.byKey(const Key('subscriptions_feed_list_view')), const Offset(0, -100));
+      await tester.pump(); // loadMore đang chạy, _loadingMore = true
+
+      // Đổi chip sang "Video"
+      await tester.tap(find.text('Video'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Video Tab Item'), findsWidgets);
+
+      // Cuộn tiếp trong tab "Video" để tải thêm
+      await tester.fling(find.byKey(const Key('subscriptions_feed_list_view')), const Offset(0, -500), 1000);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Feed Video Tải Thêm Thành Công'), findsOneWidget);
+    });
+
+    testWidgets('Hủy kênh đang lọc qua Tất cả kênh đăng ký: feed tự reset và tải lại không bị rỗng', (tester) async {
+      await tester.pumpWidget(buildTestSubscriptionsScreen(
+        channelService: channelService,
+        isLoggedIn: true,
+      ));
+      await tester.pumpAndSettle();
+
+      // 1. Lọc theo kênh 1 (Vietnam Vibes)
+      await tester.tap(find.byKey(const Key('channel_avatar_item_1')));
+      await tester.pumpAndSettle();
+      expect(channelService.lastFeedChannelId, 1);
+
+      // 2. Mở Tất cả kênh đăng ký
+      await tester.tap(find.byKey(const Key('all_subscriptions_button')));
+      await tester.pumpAndSettle();
+
+      // Hủy đăng ký kênh 1 trong màn Tất cả kênh
+      await tester.tap(find.byKey(const Key('channel_more_1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Hủy đăng ký'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('confirm_unsubscribe_button')));
+      await tester.pumpAndSettle();
+
+      // Cập nhật lại danh sách kênh trả về khi tải lại
+      channelService.returnSubscriptions = [
+        testSubscribedChannel(id: 2, name: 'Ẩm Thực Bụi'),
+      ];
+
+      // Quay lại màn chính bằng icon Back trên AppBar
+      await tester.tap(find.byIcon(Icons.arrow_back));
+      await tester.pumpAndSettle();
+
+      // Sau khi quay lại: kênh 1 không còn trong _channels, channelId tự động reset về null và feed không bị lọc theo kênh 1
+      expect(channelService.lastFeedChannelId, isNull);
+    });
   });
 }

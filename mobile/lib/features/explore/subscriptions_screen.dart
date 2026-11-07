@@ -139,11 +139,14 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
     if (!silent) {
       setState(() {
         _loadingFeed = true;
+        _loadingMore = false;
         _feedError = null;
         _page = 0;
         _videos.clear();
         _hasMore = true;
       });
+    } else {
+      _loadingMore = false;
     }
 
     try {
@@ -159,6 +162,7 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
         _page = res.page;
         _hasMore = res.hasMore;
         _loadingFeed = false;
+        _loadingMore = false;
         _feedError = null;
       });
     } on ApiException catch (e) {
@@ -166,6 +170,7 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
       setState(() {
         if (!silent) _feedError = e.message;
         _loadingFeed = false;
+        _loadingMore = false;
       });
       if (silent) showSnack(context, e.message);
     } catch (_) {
@@ -173,6 +178,7 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
       setState(() {
         if (!silent) _feedError = 'Không thể tải video từ các kênh đăng ký.';
         _loadingFeed = false;
+        _loadingMore = false;
       });
       if (silent) showSnack(context, 'Không thể tải video từ các kênh đăng ký.');
     }
@@ -224,8 +230,8 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
       MaterialPageRoute(builder: (_) => const AllSubscriptionsScreen()),
     );
     if (changed == true && mounted) {
-      _loadChannels();
-      _refreshFeed();
+      await _loadChannels();
+      if (mounted) await _refreshFeed();
     }
   }
 
