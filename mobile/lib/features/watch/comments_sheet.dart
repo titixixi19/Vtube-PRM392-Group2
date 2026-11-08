@@ -144,8 +144,10 @@ class _CommentsSheetContentState extends State<CommentsSheetContent> {
           _comments.insert(0, newComment);
           _totalCount++;
         } else {
-          // Cập nhật số phản hồi của bình luận cha
-          final parentIdx = _comments.indexWhere((c) => c.id == parentId);
+          // Cập nhật số phản hồi của bình luận gốc:
+          // Nếu người dùng trả lời một reply con, rootId sẽ lấy từ newComment.parentId hoặc _replyingTo?.parentId
+          final rootId = newComment.parentId ?? _replyingTo?.parentId ?? parentId;
+          final parentIdx = _comments.indexWhere((c) => c.id == rootId);
           if (parentIdx != -1) {
             final p = _comments[parentIdx];
             _comments[parentIdx] = Comment(
@@ -164,8 +166,9 @@ class _CommentsSheetContentState extends State<CommentsSheetContent> {
               myReaction: p.myReaction,
             );
           }
-          // Thêm reply vào thread của comment cha
-          _tileKeys[parentId]?.currentState?.addReply(newComment);
+          // Thêm reply vào thread của comment gốc
+          _tileKeys[rootId]?.currentState?.addReply(newComment);
+          _totalCount++;
         }
         _replyingTo = null;
       });

@@ -44,6 +44,21 @@ class CommentItemTileState extends State<CommentItemTile> {
     setState(() {
       _replies.add(reply);
       _showReplies = true;
+      _comment = Comment(
+        id: _comment.id,
+        videoId: _comment.videoId,
+        parentId: _comment.parentId,
+        content: _comment.content,
+        likeCount: _comment.likeCount,
+        replyCount: _comment.replyCount + 1,
+        pinned: _comment.pinned,
+        hearted: _comment.hearted,
+        createdAt: _comment.createdAt,
+        updatedAt: _comment.updatedAt,
+        author: _comment.author,
+        byChannelOwner: _comment.byChannelOwner,
+        myReaction: _comment.myReaction,
+      );
     });
   }
 

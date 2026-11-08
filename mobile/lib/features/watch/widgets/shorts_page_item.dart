@@ -134,7 +134,12 @@ class _ShortsPageItemState extends State<ShortsPageItem> with SingleTickerProvid
   }
 
   Future<void> _toggleSubscribe() async {
-    if (!await requireLogin(context)) return;
+    widget.controller?.pause();
+    final loggedIn = await requireLogin(context);
+    if (mounted && widget.isCurrent) {
+      widget.controller?.play();
+    }
+    if (!loggedIn) return;
     if (!mounted) return;
 
     final before = _subscribed;
@@ -271,6 +276,12 @@ class _ShortsPageItemState extends State<ShortsPageItem> with SingleTickerProvid
             initialLikeCount: widget.initialLikeCount,
             onReactionChanged: widget.onReactionChanged,
             onOpenComments: widget.onOpenComments,
+            onPause: () => widget.controller?.pause(),
+            onResume: () {
+              if (mounted && widget.isCurrent) {
+                widget.controller?.play();
+              }
+            },
           ),
         ),
 
