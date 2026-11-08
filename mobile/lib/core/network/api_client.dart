@@ -51,7 +51,11 @@ class ApiClient {
             path,
             data: form,
             cancelToken: cancelToken,
-            options: Options(contentType: 'multipart/form-data', sendTimeout: const Duration(minutes: 10)),
+            options: Options(
+              contentType: 'multipart/form-data',
+              sendTimeout: const Duration(minutes: 10),
+              receiveTimeout: const Duration(minutes: 5),
+            ),
             onSendProgress: (sent, total) {
               if (onProgress != null && total > 0) onProgress(sent / total);
             },

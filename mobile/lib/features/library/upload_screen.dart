@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
+import 'package:video_thumbnail/video_thumbnail.dart';
 
 import '../../app/routes.dart';
 import '../../app/theme.dart';
@@ -19,6 +20,8 @@ import '../../data/services/upload_service.dart';
 import '../../data/services/video_service.dart';
 import 'widgets/upload_setting_sheets.dart';
 
+typedef ExtractThumbnail = Future<String?> Function(String videoPath);
+
 /// MÀN 15 · TẢI VIDEO LÊN · Người 4
 /// Luồng: chọn video (image_picker: pickVideo) -> UploadService.upload(path, type: 'video', onProgress:)
 ///        -> (tùy chọn) upload thumbnail type: 'image' -> VideoService.create(title:, videoUrl:, ...)
@@ -26,12 +29,14 @@ class UploadScreen extends StatefulWidget {
   final bool isShort;
   final PickVideoFile? pickVideo;
   final PickImageFile? pickImage;
+  final ExtractThumbnail? extractThumbnail;
 
   const UploadScreen({
     super.key,
     this.isShort = false,
     this.pickVideo,
     this.pickImage,
+    this.extractThumbnail,
   });
 
   @override
@@ -42,6 +47,7 @@ class _UploadScreenState extends State<UploadScreen> {
   late bool _isShort;
   XFile? _videoFile;
   XFile? _thumbnailFile;
+  bool _hasCustomThumbnail = false;
   VideoPlayerController? _videoController;
 
   final _titleController = TextEditingController();
@@ -64,6 +70,9 @@ class _UploadScreenState extends State<UploadScreen> {
   bool _uploadFailed = false;
   String? _uploadError;
   CancelToken? _cancelToken;
+  bool _isCancelled = false;
+  String? _uploadedVideoUrl;
+  String? _uploadedThumbnailUrl;
 
   @override
   void initState() {
@@ -93,7 +102,9 @@ class _UploadScreenState extends State<UploadScreen> {
 
     try {
       final playlists = await playlistService.mine();
-      if (mounted) setState(() => _myPlaylists = playlists);
+      if (mounted) {
+        setState(() => _myPlaylists = playlists.where((p) => p.kind != 'liked').toList());
+      }
     } catch (_) {}
   }
 
@@ -103,26 +114,82 @@ class _UploadScreenState extends State<UploadScreen> {
       final picked = await picker;
       if (picked == null || !mounted) return;
 
-      setState(() => _videoFile = picked);
+      try {
+        final file = File(picked.path);
+        final fileSize = file.existsSync() ? file.lengthSync() : null;
+        if (fileSize != null && fileSize > 500 * 1024 * 1024) {
+          if (!mounted) return;
+          showSnack(context, 'Tệp quá lớn. Giới hạn dung lượng là 500MB.');
+          return;
+        }
+      } catch (_) {}
+
+      // Reset cached URLs because a new video file is selected
+      _uploadedVideoUrl = null;
+      _uploadedThumbnailUrl = null;
+
+      setState(() {
+        _videoFile = picked;
+        if (!_hasCustomThumbnail) {
+          _thumbnailFile = null;
+        }
+      });
       _loadAuxiliaryData();
 
+      if (!_hasCustomThumbnail) {
+        String? thumbPath;
+        try {
+          if (widget.extractThumbnail != null) {
+            thumbPath = await widget.extractThumbnail!(picked.path);
+          } else if (!Platform.environment.containsKey('FLUTTER_TEST')) {
+            thumbPath = await VideoThumbnail.thumbnailFile(
+              video: picked.path,
+              imageFormat: ImageFormat.JPEG,
+              timeMs: 0,
+              quality: 80,
+            );
+          }
+        } catch (_) {}
+
+        if (thumbPath != null && !_hasCustomThumbnail && mounted) {
+          setState(() {
+            _thumbnailFile = XFile(thumbPath!);
+          });
+        }
+      }
+
+      VideoPlayerController? controller;
       try {
-        final controller = VideoPlayerController.file(File(picked.path));
+        controller = VideoPlayerController.file(File(picked.path));
         await controller.initialize();
-        if (!mounted) return;
+        if (!mounted) {
+          controller.dispose();
+          return;
+        }
+        _videoController?.dispose();
         setState(() {
           _videoController = controller;
-          _durationSeconds = controller.value.duration.inSeconds;
+          _durationSeconds = controller!.value.duration.inSeconds;
         });
 
-        // Tự động gợi ý Short nếu video ngắn <= 60s và có tỉ lệ dọc
-        if (!_isShort && _durationSeconds > 0 && _durationSeconds <= 60 && controller.value.aspectRatio < 1.0) {
+        // Tự động gợi ý Short nếu video ngắn <= 60s và có tỉ lệ dọc (có tính rotationCorrection)
+        final rot = controller.value.rotationCorrection;
+        final rawRatio = controller.value.aspectRatio;
+        final isRotated = rot == 90 || rot == 270;
+        final effectiveRatio = isRotated && rawRatio > 0 ? (1.0 / rawRatio) : rawRatio;
+
+        if (!_isShort && _durationSeconds > 0 && _durationSeconds <= 60 && effectiveRatio < 1.0) {
           _promptSuggestShort();
         }
       } catch (_) {
-        // Fallback khi kiểm thử widget hoặc môi trường không hỗ trợ video decoder
-        if (_durationSeconds == 0) {
-          setState(() => _durationSeconds = 30);
+        controller?.dispose();
+        _videoController?.dispose();
+        if (mounted) {
+          setState(() {
+            _videoController = null;
+            _durationSeconds = 0;
+          });
+          showSnack(context, 'Không thể phát video đã chọn');
         }
       }
     } catch (e) {
@@ -163,7 +230,11 @@ class _UploadScreenState extends State<UploadScreen> {
           : ImagePicker().pickImage(source: ImageSource.gallery);
       final picked = await picker;
       if (picked == null || !mounted) return;
-      setState(() => _thumbnailFile = picked);
+      setState(() {
+        _thumbnailFile = picked;
+        _hasCustomThumbnail = true;
+        _uploadedThumbnailUrl = null;
+      });
     } catch (_) {
       if (!mounted) return;
       showSnack(context, 'Không thể chọn hình thu nhỏ');
@@ -194,6 +265,9 @@ class _UploadScreenState extends State<UploadScreen> {
     final playlistService = context.read<PlaylistService>();
     final authProvider = context.read<AuthProvider>();
 
+    _isCancelled = false;
+    _cancelToken = CancelToken();
+
     setState(() {
       _uploading = true;
       _uploadProgress = 0.05;
@@ -201,22 +275,24 @@ class _UploadScreenState extends State<UploadScreen> {
       _uploadError = null;
     });
 
-    _cancelToken = CancelToken();
-
     try {
-      // 1. Tải lên tệp video (chiếm 80% tiến độ)
-      final videoRes = await uploadService.upload(
-        _videoFile!.path,
-        type: 'video',
-        onProgress: (p) {
-          if (mounted) setState(() => _uploadProgress = 0.05 + (p * 0.75));
-        },
-        cancelToken: _cancelToken,
-      );
+      // 1. Tải lên tệp video nếu chưa có URL đã tải (chiếm 80% tiến độ)
+      if (_uploadedVideoUrl == null) {
+        final videoRes = await uploadService.upload(
+          _videoFile!.path,
+          type: 'video',
+          onProgress: (p) {
+            if (mounted) setState(() => _uploadProgress = 0.05 + (p * 0.75));
+          },
+          cancelToken: _cancelToken,
+        );
+        _uploadedVideoUrl = videoRes.url;
+      }
 
-      // 2. Tải lên ảnh thumbnail nếu có (chiếm 15% tiến độ)
-      String? thumbnailUrl;
-      if (_thumbnailFile != null) {
+      if (_cancelToken?.isCancelled == true || _isCancelled || !mounted) return;
+
+      // 2. Tải lên ảnh thumbnail nếu có và chưa có URL (chiếm 15% tiến độ)
+      if (_thumbnailFile != null && _uploadedThumbnailUrl == null) {
         final thumbRes = await uploadService.upload(
           _thumbnailFile!.path,
           type: 'image',
@@ -225,10 +301,10 @@ class _UploadScreenState extends State<UploadScreen> {
           },
           cancelToken: _cancelToken,
         );
-        thumbnailUrl = thumbRes.url;
+        _uploadedThumbnailUrl = thumbRes.url;
       }
 
-      if (!mounted) return;
+      if (_cancelToken?.isCancelled == true || _isCancelled || !mounted) return;
       setState(() => _uploadProgress = 0.95);
 
       // 3. Tạo bản ghi video
@@ -236,8 +312,8 @@ class _UploadScreenState extends State<UploadScreen> {
       final created = await videoService.create(
         title: _titleController.text.trim(),
         description: desc.isEmpty ? null : desc,
-        thumbnailUrl: thumbnailUrl,
-        videoUrl: videoRes.url,
+        thumbnailUrl: _uploadedThumbnailUrl,
+        videoUrl: _uploadedVideoUrl!,
         durationSeconds: _durationSeconds,
         categoryId: _selectedCategory?.id,
         isShort: _isShort,
@@ -247,14 +323,18 @@ class _UploadScreenState extends State<UploadScreen> {
         tags: _tags.isEmpty ? null : _tags.join(','),
       );
 
+      if (_cancelToken?.isCancelled == true || _isCancelled || !mounted) return;
+
       // 4. Thêm vào các playlist đã chọn
       for (final plId in _selectedPlaylistIds) {
+        if (_cancelToken?.isCancelled == true || _isCancelled || !mounted) return;
         try {
           await playlistService.addVideo(plId, created.id);
         } catch (_) {}
       }
 
-      if (!mounted) return;
+      if (_cancelToken?.isCancelled == true || _isCancelled || !mounted) return;
+
       setState(() {
         _uploadProgress = 1.0;
         _uploading = false;
@@ -268,6 +348,9 @@ class _UploadScreenState extends State<UploadScreen> {
         context.go(AppRoutes.home);
       }
     } catch (e) {
+      if (_cancelToken?.isCancelled == true || _isCancelled) {
+        return;
+      }
       if (!mounted) return;
       final msg = e is ApiException ? e.message : 'Tải lên thất bại. Vui lòng thử lại sau.';
       setState(() {
@@ -279,7 +362,7 @@ class _UploadScreenState extends State<UploadScreen> {
     }
   }
 
-  Future<void> _cancelUpload() async {
+  Future<bool> _cancelUpload() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -297,12 +380,15 @@ class _UploadScreenState extends State<UploadScreen> {
     );
 
     if (confirmed == true && mounted) {
+      _isCancelled = true;
       _cancelToken?.cancel();
       setState(() {
         _uploading = false;
         _uploadProgress = 0.0;
       });
+      return true;
     }
+    return false;
   }
 
   Future<void> _confirmDiscard() async {
@@ -350,10 +436,19 @@ class _UploadScreenState extends State<UploadScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_videoFile == null) {
-      return _buildPickerScreen();
-    }
-    return _buildFormScreen();
+    return PopScope(
+      canPop: !_uploading,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        if (_uploading) {
+          final cancelled = await _cancelUpload();
+          if (cancelled && context.mounted) {
+            context.pop();
+          }
+        }
+      },
+      child: _videoFile == null ? _buildPickerScreen() : _buildFormScreen(),
+    );
   }
 
   Widget _buildPickerScreen() {
@@ -647,7 +742,7 @@ class _UploadScreenState extends State<UploadScreen> {
                           icon: Icon(
                             _videoController!.value.isPlaying ? Icons.pause_circle_outline : Icons.play_circle_outline,
                             size: 48,
-                            color: Colors.white70,
+                            color: AppColors.textPrimary.withValues(alpha: 0.7),
                           ),
                           onPressed: () {
                             setState(() {
@@ -680,8 +775,8 @@ class _UploadScreenState extends State<UploadScreen> {
                 bottom: 10,
                 child: FilledButton.tonalIcon(
                   style: FilledButton.styleFrom(
-                    backgroundColor: Colors.black.withValues(alpha: 0.75),
-                    foregroundColor: Colors.white,
+                    backgroundColor: AppColors.background.withValues(alpha: 0.75),
+                    foregroundColor: AppColors.textPrimary,
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -700,12 +795,12 @@ class _UploadScreenState extends State<UploadScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.8),
+                      color: AppColors.background.withValues(alpha: 0.8),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
                       Fmt.duration(_durationSeconds),
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                     ),
                   ),
                 ),
