@@ -87,7 +87,7 @@ class UploadProgressCard extends StatelessWidget {
   final double progress;
   final bool isFailed;
   final String? errorMessage;
-  final VoidCallback onCancel;
+  final VoidCallback? onCancel;
   final VoidCallback? onRetry;
 
   const UploadProgressCard({
@@ -95,7 +95,7 @@ class UploadProgressCard extends StatelessWidget {
     required this.progress,
     this.isFailed = false,
     this.errorMessage,
-    required this.onCancel,
+    this.onCancel,
     this.onRetry,
   });
 
@@ -153,13 +153,14 @@ class UploadProgressCard extends StatelessWidget {
                       'Đang tải lên ${(progress * 100).round()}%',
                       style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close, size: 20),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      tooltip: 'Hủy tải lên',
-                      onPressed: onCancel,
-                    ),
+                    if (onCancel != null)
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 20),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        tooltip: 'Hủy tải lên',
+                        onPressed: onCancel,
+                      ),
                   ],
                 ),
                 const SizedBox(height: 10),

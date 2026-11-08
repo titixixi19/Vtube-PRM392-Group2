@@ -253,5 +253,44 @@ void main() {
       // Playlist "Video đã thích" (kind == 'liked') đã bị lọc bỏ
       expect(find.text('Video đã thích'), findsNothing);
     });
+
+    testWidgets('Reordering items flushes pending removes before calling reorder API', (tester) async {
+      await tester.pumpWidget(
+        createTestApp(
+          child: const PlaylistScreen(playlistId: 100),
+          auth: authProvider,
+          notificationService: fakeNotifService,
+          historyService: fakeHistoryService,
+          playlistService: fakePlaylistService,
+          videoService: fakeVideoService,
+          uploadService: fakeUploadService,
+          authService: fakeAuthService,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Giả sử có 2 videos: 101 và 102. Xóa video 101 optimistically.
+      final moreButtons = find.byIcon(Icons.more_vert);
+      await tester.tap(moreButtons.first);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Xóa khỏi danh sách phát'));
+      await tester.pumpAndSettle();
+
+      expect(fakePlaylistService.removeVideoCalls, 0); // Vẫn đang pending vì SnackBar hiển thị
+
+      // Gọi _onReorder (hoặc _moveItemTo)
+      final state = tester.state(find.byType(PlaylistScreen)) as dynamic;
+      await state.widget;
+      final reorderableList = find.byType(ReorderableListView);
+      final listWidget = tester.widget<ReorderableListView>(reorderableList);
+      // ignore: deprecated_member_use
+      listWidget.onReorder!(0, 1);
+      await tester.pumpAndSettle();
+
+      // Pending remove phải được hoàn tất trước khi reorder
+      expect(fakePlaylistService.removeVideoCalls, 1);
+      expect(fakePlaylistService.reorderCalls, 1);
+    });
   });
 }

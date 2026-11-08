@@ -8,8 +8,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vtube/core/auth/auth_provider.dart';
 import 'package:vtube/core/network/api_client.dart';
 import 'package:vtube/core/storage/token_storage.dart';
+import 'package:vtube/data/models/models.dart';
 import 'package:vtube/data/services/upload_service.dart';
 import 'package:vtube/features/library/upload_screen.dart';
+import 'package:vtube/features/library/widgets/upload_setting_sheets.dart';
 
 import 'library_test_helpers.dart';
 
@@ -257,6 +259,150 @@ void main() {
       // Không gọi lại uploadService.upload vì đã cache _uploadedVideoUrl!
       expect(fakeUploadService.uploadCalls, 1);
       expect(fakeVideoService.createCalls, 2);
+      expect(find.text('Video đã được tải lên'), findsOneWidget);
+    });
+
+    testWidgets('Cancellation is disabled during record creation phase (~95% progress) to prevent duplicates', (tester) async {
+      await authProvider.login('test@vtube.com', '123456');
+
+      final createCompleter = Completer<Video>();
+      fakeVideoService.createCompleter = createCompleter;
+
+      await tester.pumpWidget(
+        createTestApp(
+          child: UploadScreen(
+            pickVideo: (source) async => XFile('test/assets/test.mp4'),
+          ),
+          auth: authProvider,
+          notificationService: fakeNotifService,
+          historyService: fakeHistoryService,
+          playlistService: fakePlaylistService,
+          videoService: fakeVideoService,
+          uploadService: fakeUploadService,
+          authService: fakeAuthService,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Chọn từ thư viện'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField).first, 'Late Cancel Test Video');
+      await tester.pumpAndSettle();
+
+      // Bấm Tải lên
+      await tester.tap(find.widgetWithText(FilledButton, 'Tải lên'));
+      await tester.pump(); // Upload files hoàn thành, chuyển sang tạo bản ghi ở mức 95%
+
+      // Đang ở giai đoạn tạo bản ghi 95%
+      expect(find.text('Đang tải lên 95%'), findsOneWidget);
+
+      // Nút hủy trong UploadProgressCard bị ẩn để tránh hủy muộn gây trùng lặp
+      expect(
+        find.descendant(of: find.byType(UploadProgressCard), matching: find.byIcon(Icons.close)),
+        findsNothing,
+      );
+
+      // Thử bấm đóng từ AppBar cũng bị chặn
+      final appBarClose = find.widgetWithIcon(IconButton, Icons.close);
+      expect(appBarClose, findsOneWidget);
+      await tester.tap(appBarClose);
+      await tester.pumpAndSettle();
+      expect(find.text('Đang tạo bản ghi video, không thể hủy lúc này'), findsOneWidget);
+      expect(find.text('Thêm thông tin'), findsOneWidget); // Vẫn ở màn hình upload form
+
+      // Hoàn tất tạo bản ghi
+      createCompleter.complete(
+        const Video(
+          id: 999,
+          title: 'Late Cancel Test Video',
+          videoUrl: '/uploads/test_video.mp4',
+          durationSeconds: 0,
+          viewCount: 0,
+          likeCount: 0,
+          dislikeCount: 0,
+          commentCount: 0,
+          publishedAt: '2026-11-08T00:00:00Z',
+          channel: kTestChannel,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Chỉ gọi create đúng 1 lần và thành công
+      expect(fakeVideoService.createCalls, 1);
+      expect(find.text('Video đã được tải lên'), findsOneWidget);
+    });
+
+    testWidgets('Confirming cancel dialog when upload enters record creation phase blocks cancel', (tester) async {
+      await authProvider.login('test@vtube.com', '123456');
+
+      final uploadCompleter = Completer<UploadResult>();
+      fakeUploadService.uploadCompleter = uploadCompleter;
+      final createCompleter = Completer<Video>();
+      fakeVideoService.createCompleter = createCompleter;
+
+      await tester.pumpWidget(
+        createTestApp(
+          child: UploadScreen(
+            pickVideo: (source) async => XFile('test/assets/test.mp4'),
+          ),
+          auth: authProvider,
+          notificationService: fakeNotifService,
+          historyService: fakeHistoryService,
+          playlistService: fakePlaylistService,
+          videoService: fakeVideoService,
+          uploadService: fakeUploadService,
+          authService: fakeAuthService,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Chọn từ thư viện'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField).first, 'Race Condition Video');
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Tải lên'));
+      await tester.pump(); // Upload is running
+
+      // Mở hộp thoại xác nhận hủy trong khi tệp đang tải
+      final cancelBtn = find.descendant(of: find.byType(UploadProgressCard), matching: find.byIcon(Icons.close));
+      expect(cancelBtn, findsOneWidget);
+      await tester.tap(cancelBtn);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Hủy tải lên?'), findsOneWidget);
+
+      // Trong khi hộp thoại xác nhận đang mở, tệp upload hoàn thành -> chuyển sang tạo bản ghi (95%)
+      uploadCompleter.complete(const UploadResult('/uploads/test.mp4', 'test.mp4', 100));
+      await tester.pump();
+
+      // Giờ người dùng mới bấm nút "Hủy tải lên" trong dialog
+      await tester.tap(find.widgetWithText(TextButton, 'Hủy tải lên'));
+      await tester.pumpAndSettle();
+
+      // Vì đã bước vào giai đoạn tạo bản ghi, việc hủy bị từ chối
+      expect(find.text('Đang tạo bản ghi video, không thể hủy lúc này'), findsOneWidget);
+
+      // Cho hoàn tất tạo bản ghi
+      createCompleter.complete(
+        const Video(
+          id: 1001,
+          title: 'Race Condition Video',
+          videoUrl: '/uploads/test.mp4',
+          durationSeconds: 0,
+          viewCount: 0,
+          likeCount: 0,
+          dislikeCount: 0,
+          commentCount: 0,
+          publishedAt: '2026-11-08T00:00:00Z',
+          channel: kTestChannel,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(fakeVideoService.createCalls, 1);
       expect(find.text('Video đã được tải lên'), findsOneWidget);
     });
   });

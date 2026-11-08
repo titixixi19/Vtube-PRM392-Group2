@@ -38,7 +38,9 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
   bool _loading = true;
   String? _error;
   bool _isForbidden = false;
-  final _pendingRemoves = <int, Future<void> Function()>{};
+  int _requestId = 0;
+  ScaffoldMessengerState? _scaffoldMessenger;
+  final _pendingRemoves = <int, Future<void> Function({bool rollback})>{};
 
   @override
   void initState() {
@@ -47,21 +49,29 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _scaffoldMessenger = ScaffoldMessenger.maybeOf(context);
+  }
+
+  @override
   void dispose() {
     for (final action in _pendingRemoves.values) {
-      action();
+      action(rollback: false);
     }
     _pendingRemoves.clear();
+    _scaffoldMessenger?.hideCurrentSnackBar();
     super.dispose();
   }
 
   Future<void> _loadDetail() async {
+    final reqId = ++_requestId;
     if (_pendingRemoves.isNotEmpty) {
-      for (final action in _pendingRemoves.values) {
-        action();
-      }
+      final pendingActions = _pendingRemoves.values.toList();
       _pendingRemoves.clear();
       ScaffoldMessenger.maybeOf(context)?.hideCurrentSnackBar();
+      await Future.wait(pendingActions.map((action) => action(rollback: false)));
+      if (!mounted || reqId != _requestId) return;
     }
 
     setState(() {
@@ -72,14 +82,14 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
 
     try {
       final res = await context.read<PlaylistService>().detail(widget.playlistId, sort: _sort);
-      if (!mounted) return;
+      if (!mounted || reqId != _requestId) return;
       setState(() {
         _detail = res;
         _items = List.of(res.items);
         _loading = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || reqId != _requestId) return;
       if (e is ApiException && (e.statusCode == 403 || e.isUnauthorized)) {
         setState(() {
           _isForbidden = true;
@@ -147,9 +157,6 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
     if (confirmed != true || !mounted) return;
 
     if (_pendingRemoves.isNotEmpty) {
-      for (final action in _pendingRemoves.values) {
-        action();
-      }
       _pendingRemoves.clear();
       ScaffoldMessenger.maybeOf(context)?.hideCurrentSnackBar();
     }
@@ -173,11 +180,11 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
     final messenger = ScaffoldMessenger.of(context);
     bool undone = false;
 
-    Future<void> performRemove() async {
+    Future<void> performRemove({bool rollback = true}) async {
       try {
         await playlistService.removeVideo(widget.playlistId, removed.video.id);
       } catch (e) {
-        if (mounted) {
+        if (mounted && rollback) {
           setState(() {
             final safeIndex = index.clamp(0, _items.length);
             _items.insert(safeIndex, removed);
@@ -216,9 +223,18 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
       }
       final action = _pendingRemoves.remove(removed.video.id);
       if (action != null) {
-        await action();
+        await action(rollback: true);
       }
     });
+  }
+
+  Future<void> _flushPendingRemoves() async {
+    if (_pendingRemoves.isNotEmpty) {
+      final pendingActions = _pendingRemoves.values.toList();
+      _pendingRemoves.clear();
+      ScaffoldMessenger.maybeOf(context)?.hideCurrentSnackBar();
+      await Future.wait(pendingActions.map((action) => action(rollback: false)));
+    }
   }
 
   Future<void> _moveItemTo(int fromIndex, int toIndex) async {
@@ -228,6 +244,8 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
     });
 
     try {
+      await _flushPendingRemoves();
+      if (!mounted) return;
       await context.read<PlaylistService>().reorder(
             widget.playlistId,
             _items.map((e) => e.video.id).toList(),
@@ -249,6 +267,8 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
     });
 
     try {
+      await _flushPendingRemoves();
+      if (!mounted) return;
       await context.read<PlaylistService>().reorder(
             widget.playlistId,
             _items.map((e) => e.video.id).toList(),

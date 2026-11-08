@@ -50,8 +50,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
   String? _error;
   int _requestId = 0;
   bool? _lastLoggedIn;
+  ScaffoldMessengerState? _scaffoldMessenger;
 
-  final _pendingDeletes = <int, Future<void> Function()>{};
+  final _pendingDeletes = <int, Future<void> Function({bool rollback})>{};
 
   @override
   void initState() {
@@ -62,6 +63,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _scaffoldMessenger = ScaffoldMessenger.maybeOf(context);
     final loggedIn = context.watch<AuthProvider>().isLoggedIn;
     if (_lastLoggedIn != loggedIn) {
       _lastLoggedIn = loggedIn;
@@ -81,9 +83,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
     _scroll.removeListener(_onScroll);
     _scroll.dispose();
     for (final action in _pendingDeletes.values) {
-      action();
+      action(rollback: false);
     }
     _pendingDeletes.clear();
+    _scaffoldMessenger?.hideCurrentSnackBar();
     super.dispose();
   }
 
@@ -96,11 +99,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Future<void> _refresh({bool isFilterChange = false}) async {
     final reqId = ++_requestId;
     if (_pendingDeletes.isNotEmpty) {
-      for (final action in _pendingDeletes.values) {
-        action();
-      }
+      final pendingActions = _pendingDeletes.values.toList();
       _pendingDeletes.clear();
       ScaffoldMessenger.maybeOf(context)?.hideCurrentSnackBar();
+      await Future.wait(pendingActions.map((action) => action(rollback: false)));
+      if (!mounted || reqId != _requestId) return;
     }
     final prevItems = List<HistoryItem>.from(_items);
     final prevPage = _page;
@@ -222,11 +225,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final messenger = ScaffoldMessenger.of(context);
     bool undone = false;
 
-    Future<void> performDelete() async {
+    Future<void> performDelete({bool rollback = true}) async {
       try {
         await historyService.delete(item.video.id);
       } catch (e) {
-        if (mounted) {
+        if (mounted && rollback) {
           setState(() {
             final safeIndex = index.clamp(0, _items.length);
             _items.insert(safeIndex, item);
@@ -265,7 +268,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       }
       final action = _pendingDeletes.remove(item.video.id);
       if (action != null) {
-        await action();
+        await action(rollback: true);
       }
     });
   }
@@ -293,9 +296,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
     if (confirmed != true || !mounted) return;
 
     if (_pendingDeletes.isNotEmpty) {
-      for (final action in _pendingDeletes.values) {
-        action();
-      }
       _pendingDeletes.clear();
       ScaffoldMessenger.maybeOf(context)?.hideCurrentSnackBar();
     }

@@ -74,6 +74,8 @@ class _UploadScreenState extends State<UploadScreen> {
   String? _uploadedVideoUrl;
   String? _uploadedThumbnailUrl;
 
+  bool get _isCreatingRecord => _uploading && _uploadProgress >= 0.95;
+
   @override
   void initState() {
     super.initState();
@@ -323,17 +325,15 @@ class _UploadScreenState extends State<UploadScreen> {
         tags: _tags.isEmpty ? null : _tags.join(','),
       );
 
-      if (_cancelToken?.isCancelled == true || _isCancelled || !mounted) return;
-
       // 4. Thêm vào các playlist đã chọn
       for (final plId in _selectedPlaylistIds) {
-        if (_cancelToken?.isCancelled == true || _isCancelled || !mounted) return;
+        if (!mounted) return;
         try {
           await playlistService.addVideo(plId, created.id);
         } catch (_) {}
       }
 
-      if (_cancelToken?.isCancelled == true || _isCancelled || !mounted) return;
+      if (!mounted) return;
 
       setState(() {
         _uploadProgress = 1.0;
@@ -363,6 +363,13 @@ class _UploadScreenState extends State<UploadScreen> {
   }
 
   Future<bool> _cancelUpload() async {
+    if (_isCreatingRecord) {
+      if (mounted) {
+        showSnack(context, 'Đang tạo bản ghi video, không thể hủy lúc này');
+      }
+      return false;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -380,7 +387,14 @@ class _UploadScreenState extends State<UploadScreen> {
     );
 
     if (confirmed == true && mounted) {
+      if (!_uploading) return false;
+      if (_isCreatingRecord) {
+        showSnack(context, 'Đang tạo bản ghi video, không thể hủy lúc này');
+        return false;
+      }
       _isCancelled = true;
+      _uploadedVideoUrl = null;
+      _uploadedThumbnailUrl = null;
       _cancelToken?.cancel();
       setState(() {
         _uploading = false;
@@ -393,7 +407,14 @@ class _UploadScreenState extends State<UploadScreen> {
 
   Future<void> _confirmDiscard() async {
     if (_uploading) {
-      _cancelUpload();
+      if (_isCreatingRecord) {
+        showSnack(context, 'Đang tạo bản ghi video, không thể hủy lúc này');
+        return;
+      }
+      final cancelled = await _cancelUpload();
+      if (cancelled && mounted) {
+        context.pop();
+      }
       return;
     }
 
@@ -441,6 +462,12 @@ class _UploadScreenState extends State<UploadScreen> {
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
         if (_uploading) {
+          if (_isCreatingRecord) {
+            if (context.mounted) {
+              showSnack(context, 'Đang tạo bản ghi video, không thể hủy lúc này');
+            }
+            return;
+          }
           final cancelled = await _cancelUpload();
           if (cancelled && context.mounted) {
             context.pop();
@@ -550,7 +577,7 @@ class _UploadScreenState extends State<UploadScreen> {
                 progress: _uploadProgress,
                 isFailed: _uploadFailed,
                 errorMessage: _uploadError,
-                onCancel: _cancelUpload,
+                onCancel: _isCreatingRecord ? null : _cancelUpload,
                 onRetry: _startUpload,
               ),
 
