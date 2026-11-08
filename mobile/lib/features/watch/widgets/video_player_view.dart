@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -32,6 +34,8 @@ class VideoPlayerViewState extends State<VideoPlayerView> {
   bool _hasError = false;
   String? _errorMessage;
   bool _hasCalledStarted = false;
+  Timer? _seekIndicatorTimer;
+  int? _seekIndicatorSeconds;
 
   @override
   void initState() {
@@ -127,7 +131,36 @@ class VideoPlayerViewState extends State<VideoPlayerView> {
 
   int get currentPositionSeconds => _videoPlayerController?.value.position.inSeconds ?? 0;
 
+  void _handleDoubleTap(Offset position, double width) {
+    final controller = _videoPlayerController;
+    if (controller == null || !controller.value.isInitialized) return;
+
+    final isForward = position.dx >= width / 2;
+    final delta = isForward ? 10 : -10;
+
+    final current = controller.value.position;
+    final duration = controller.value.duration;
+    final target = current + Duration(seconds: delta);
+    final clamped = target < Duration.zero
+        ? Duration.zero
+        : (target > duration ? duration : target);
+
+    controller.seekTo(clamped);
+
+    _seekIndicatorTimer?.cancel();
+    setState(() {
+      _seekIndicatorSeconds = delta;
+    });
+
+    _seekIndicatorTimer = Timer(const Duration(milliseconds: 650), () {
+      if (mounted) {
+        setState(() => _seekIndicatorSeconds = null);
+      }
+    });
+  }
+
   void _disposeControllers() {
+    _seekIndicatorTimer?.cancel();
     _videoPlayerController?.removeListener(_videoListener);
     _chewieController?.dispose();
     _videoPlayerController?.dispose();
@@ -137,6 +170,7 @@ class VideoPlayerViewState extends State<VideoPlayerView> {
 
   @override
   void dispose() {
+    _seekIndicatorTimer?.cancel();
     _disposeControllers();
     super.dispose();
   }
@@ -178,7 +212,56 @@ class VideoPlayerViewState extends State<VideoPlayerView> {
                 ),
               )
             : _isInitialized && _chewieController != null
-                ? Chewie(controller: _chewieController!)
+                ? LayoutBuilder(
+                    builder: (context, constraints) {
+                      return GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onDoubleTapDown: (details) {
+                          _handleDoubleTap(details.localPosition, constraints.maxWidth);
+                        },
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Chewie(controller: _chewieController!),
+                            if (_seekIndicatorSeconds != null)
+                              Positioned(
+                                left: _seekIndicatorSeconds! < 0 ? 32 : null,
+                                right: _seekIndicatorSeconds! > 0 ? 32 : null,
+                                child: IgnorePointer(
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withAlpha(180),
+                                      borderRadius: BorderRadius.circular(24),
+                                      border: Border.all(color: Colors.white24, width: 1),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          _seekIndicatorSeconds! < 0 ? Icons.replay_10 : Icons.forward_10,
+                                          color: Colors.white,
+                                          size: 26,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          _seekIndicatorSeconds! < 0 ? '-10 giây' : '+10 giây',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      );
+                    },
+                  )
                 : const Center(
                     child: CircularProgressIndicator(color: AppColors.accent),
                   ),

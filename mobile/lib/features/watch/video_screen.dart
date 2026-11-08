@@ -191,13 +191,29 @@ class _VideoScreenState extends State<VideoScreen> {
                     VideoInfoSection(
                       video: video,
                       previewComment: _previewComment,
-                      onOpenComments: () => showCommentsSheet(
-                        context,
-                        video.id,
-                        channelId: video.channel.id,
-                        commentsEnabled: video.commentsEnabled,
-                        totalCommentCount: video.commentCount,
-                      ),
+                      onOpenComments: () async {
+                        final count = await showCommentsSheet(
+                          context,
+                          video.id,
+                          channelId: video.channel.id,
+                          commentsEnabled: video.commentsEnabled,
+                          totalCommentCount: video.commentCount,
+                          onCommentCountChanged: (newCount, latestComment) {
+                            if (!mounted) return;
+                            setState(() {
+                              _video = _video?.copyWith(commentCount: newCount);
+                              if (latestComment != null) {
+                                _previewComment = latestComment;
+                              }
+                            });
+                          },
+                        );
+                        if (count != null && mounted) {
+                          setState(() {
+                            _video = _video?.copyWith(commentCount: count);
+                          });
+                        }
+                      },
                     ),
                     const Divider(height: 1),
                     RelatedVideosSection(videoId: video.id),

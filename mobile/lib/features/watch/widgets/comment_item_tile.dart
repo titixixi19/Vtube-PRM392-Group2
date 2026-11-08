@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -19,6 +21,7 @@ class CommentItemTile extends StatefulWidget {
   final void Function(Comment targetComment) onReply;
   final void Function(int commentId) onDelete;
   final void Function(Comment updatedComment)? onUpdated;
+  final void Function(int replyId)? onReplyDeleted;
 
   const CommentItemTile({
     super.key,
@@ -27,6 +30,7 @@ class CommentItemTile extends StatefulWidget {
     required this.onReply,
     required this.onDelete,
     this.onUpdated,
+    this.onReplyDeleted,
   });
 
   @override
@@ -44,6 +48,21 @@ class CommentItemTileState extends State<CommentItemTile> {
     setState(() {
       _replies.add(reply);
       _showReplies = true;
+      _comment = Comment(
+        id: _comment.id,
+        videoId: _comment.videoId,
+        parentId: _comment.parentId,
+        content: _comment.content,
+        likeCount: _comment.likeCount,
+        replyCount: _comment.replyCount + 1,
+        pinned: _comment.pinned,
+        hearted: _comment.hearted,
+        createdAt: _comment.createdAt,
+        updatedAt: _comment.updatedAt,
+        author: _comment.author,
+        byChannelOwner: _comment.byChannelOwner,
+        myReaction: _comment.myReaction,
+      );
     });
   }
 
@@ -481,7 +500,27 @@ class CommentItemTileState extends State<CommentItemTile> {
                                         comment: rep,
                                         isChannelOwner: widget.isChannelOwner,
                                         onReply: widget.onReply,
-                                        onDelete: (id) => setState(() => _replies.removeWhere((r) => r.id == id)),
+                                        onDelete: (id) {
+                                          setState(() {
+                                            _replies.removeWhere((r) => r.id == id);
+                                            _comment = Comment(
+                                              id: _comment.id,
+                                              videoId: _comment.videoId,
+                                              parentId: _comment.parentId,
+                                              content: _comment.content,
+                                              likeCount: _comment.likeCount,
+                                              replyCount: math.max(0, _comment.replyCount - 1),
+                                              pinned: _comment.pinned,
+                                              hearted: _comment.hearted,
+                                              createdAt: _comment.createdAt,
+                                              updatedAt: _comment.updatedAt,
+                                              author: _comment.author,
+                                              byChannelOwner: _comment.byChannelOwner,
+                                              myReaction: _comment.myReaction,
+                                            );
+                                          });
+                                          widget.onReplyDeleted?.call(id);
+                                        },
                                       ))
                                   .toList(),
                             ),

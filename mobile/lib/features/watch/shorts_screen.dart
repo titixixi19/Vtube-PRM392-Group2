@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../app/main_shell.dart';
+import '../../app/routes.dart';
 import '../../app/theme.dart';
+import '../../core/auth/require_login.dart';
 import '../../core/config/api_config.dart';
 import '../../data/models/models.dart';
 import '../../data/services/video_service.dart';
@@ -35,6 +38,7 @@ class _ShortsScreenState extends State<ShortsScreen> with WidgetsBindingObserver
 
   final Map<int, int> _reactions = {};
   final Map<int, int> _likeCounts = {};
+  final Map<int, int> _commentCounts = {};
   final Map<int, bool> _subscribedChannels = {};
 
   int _currentPage = 0;
@@ -286,6 +290,12 @@ class _ShortsScreenState extends State<ShortsScreen> with WidgetsBindingObserver
 
     _currentPage = index;
 
+    if (index >= _shorts.length) {
+      // Đã cuộn đến trang "Bạn đã xem hết Shorts"
+      _pauseAll();
+      return;
+    }
+
     // 2. Phát video mới
     _initAndPlayController(index);
 
@@ -332,44 +342,220 @@ class _ShortsScreenState extends State<ShortsScreen> with WidgetsBindingObserver
       );
     }
 
+    final hasEndPage = !_hasMore && _shorts.isNotEmpty;
+
     return Scaffold(
       backgroundColor: Colors.black,
-      body: PageView.builder(
-        controller: _pageController,
-        scrollDirection: Axis.vertical,
-        itemCount: _shorts.length,
-        onPageChanged: _onPageChanged,
-        itemBuilder: (context, index) {
-          final short = _shorts[index];
-          final controller = _controllers[index];
-          final myReaction = _reactions[short.id] ?? short.viewer?.myReaction ?? 0;
-          final likeCount = _likeCounts[short.id] ?? short.likeCount;
-          final isSubscribed = _subscribedChannels[short.channel.id] ?? short.viewer?.subscribed ?? false;
+      body: Stack(
+        children: [
+          PageView.builder(
+            controller: _pageController,
+            scrollDirection: Axis.vertical,
+            itemCount: _shorts.length + (hasEndPage ? 1 : 0),
+            onPageChanged: _onPageChanged,
+            itemBuilder: (context, index) {
+              if (index == _shorts.length) {
+                // Trang "Bạn đã xem hết Shorts"
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: AppColors.accent.withAlpha(30),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.check_circle_outline_rounded,
+                            size: 48,
+                            color: AppColors.accent,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        const Text(
+                          'Bạn đã xem hết Shorts',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Bạn đã xem tất cả các video ngắn hiện có. Hãy quay lại sau để đón xem thêm nhé!',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                            height: 1.4,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 24),
+                        FilledButton.icon(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.accent,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          ),
+                          onPressed: () {
+                            _pageController.animateToPage(
+                              0,
+                              duration: const Duration(milliseconds: 600),
+                              curve: Curves.easeInOut,
+                            );
+                          },
+                          icon: const Icon(Icons.arrow_upward_rounded),
+                          label: const Text('Quay về đầu trang'),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
 
-          return ShortsPageItem(
-            key: ValueKey('short-${short.id}'),
-            short: short,
-            controller: controller,
-            isCurrent: index == _currentPage,
-            initialReaction: myReaction,
-            initialLikeCount: likeCount,
-            initialSubscribed: isSubscribed,
-            onReactionChanged: (reaction, likes) {
-              _reactions[short.id] = reaction;
-              _likeCounts[short.id] = likes;
+              final original = _shorts[index];
+              final commentCount = _commentCounts[original.id] ?? original.commentCount;
+              final short = original.copyWith(
+                commentCount: commentCount,
+                likeCount: _likeCounts[original.id],
+              );
+              final controller = _controllers[index];
+              final myReaction = _reactions[short.id] ?? short.viewer?.myReaction ?? 0;
+              final likeCount = _likeCounts[short.id] ?? short.likeCount;
+              final isSubscribed = _subscribedChannels[short.channel.id] ?? short.viewer?.subscribed ?? false;
+
+              return ShortsPageItem(
+                key: ValueKey('short-${short.id}'),
+                short: short,
+                controller: controller,
+                isCurrent: index == _currentPage,
+                initialReaction: myReaction,
+                initialLikeCount: likeCount,
+                initialSubscribed: isSubscribed,
+                onReactionChanged: (reaction, likes) {
+                  _reactions[short.id] = reaction;
+                  _likeCounts[short.id] = likes;
+                },
+                onSubscribedChanged: (subscribed) {
+                  _subscribedChannels[short.channel.id] = subscribed;
+                },
+                onOpenComments: () async {
+                  _controllers[_currentPage]?.pause();
+                  final count = await showCommentsSheet(
+                    context,
+                    short.id,
+                    channelId: short.channel.id,
+                    commentsEnabled: short.commentsEnabled,
+                    totalCommentCount: _commentCounts[short.id] ?? short.commentCount,
+                    onCommentCountChanged: (newCount, latestComment) {
+                      if (!mounted) return;
+                      setState(() {
+                        _commentCounts[short.id] = newCount;
+                      });
+                    },
+                  );
+                  if (count != null && mounted) {
+                    setState(() {
+                      _commentCounts[short.id] = count;
+                    });
+                  }
+                  if (mounted && _effectiveActive) {
+                    _playCurrent();
+                  }
+                },
+              );
             },
-            onSubscribedChanged: (subscribed) {
-              _subscribedChannels[short.channel.id] = subscribed;
-            },
-            onOpenComments: () => showCommentsSheet(
-              context,
-              short.id,
-              channelId: short.channel.id,
-              commentsEnabled: short.commentsEnabled,
-              totalCommentCount: short.commentCount,
+          ),
+
+          // Top bar Shorts: Tiêu đề Shorts, Tìm kiếm và Menu
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              bottom: false,
+              child: Container(
+                height: 48,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black54,
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Shorts',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: -0.5,
+                        shadows: [
+                          Shadow(blurRadius: 4, color: Colors.black54),
+                        ],
+                      ),
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.search, color: Colors.white),
+                          onPressed: () async {
+                            _pauseAll();
+                            await context.push(AppRoutes.search);
+                            if (mounted && _effectiveActive) {
+                              _playCurrent();
+                            }
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.more_vert, color: Colors.white),
+                          onPressed: () {
+                            showModalBottomSheet<void>(
+                              context: context,
+                              builder: (ctx) => SafeArea(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    ListTile(
+                                      leading: const Icon(Icons.feedback_outlined),
+                                      title: const Text('Gửi ý kiến phản hồi'),
+                                      onTap: () {
+                                        Navigator.pop(ctx);
+                                        showSnack(context, 'Cảm ơn ý kiến đóng góp của bạn');
+                                      },
+                                    ),
+                                    ListTile(
+                                      leading: const Icon(Icons.info_outline),
+                                      title: const Text('Giới thiệu về VTube Shorts'),
+                                      onTap: () => Navigator.pop(ctx),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }

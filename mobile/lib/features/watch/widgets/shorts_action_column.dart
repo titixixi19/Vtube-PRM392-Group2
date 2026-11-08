@@ -19,6 +19,8 @@ class ShortsActionColumn extends StatefulWidget {
   final int? initialReaction;
   final int? initialLikeCount;
   final void Function(int nextReaction, int nextLikes)? onReactionChanged;
+  final VoidCallback? onPause;
+  final VoidCallback? onResume;
 
   const ShortsActionColumn({
     super.key,
@@ -27,6 +29,8 @@ class ShortsActionColumn extends StatefulWidget {
     this.initialReaction,
     this.initialLikeCount,
     this.onReactionChanged,
+    this.onPause,
+    this.onResume,
   });
 
   @override
@@ -74,7 +78,10 @@ class ShortsActionColumnState extends State<ShortsActionColumn> with SingleTicke
   }
 
   Future<void> _handleReaction(int targetValue) async {
-    if (!await requireLogin(context)) return;
+    widget.onPause?.call();
+    final loggedIn = await requireLogin(context);
+    widget.onResume?.call();
+    if (!loggedIn) return;
     if (!mounted) return;
 
     final prevReaction = _myReaction;
