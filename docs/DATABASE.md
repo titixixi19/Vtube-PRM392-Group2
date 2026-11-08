@@ -73,4 +73,5 @@ erDiagram
 
 - Mật khẩu của mọi tài khoản: `123456`.
 - Video thường: id 1–25. Shorts: id 26–33.
-- File video là video mẫu công khai của Google (Big Buck Bunny, Sintel...), nên nội dung không khớp tiêu đề. Đây là dữ liệu giả lập.
+- File video là video mẫu công khai (phim Blender Big Buck Bunny, Sintel... trên archive.org; clip ngắn trên test-videos.co.uk và samplelib.com), nên nội dung không khớp tiêu đề. Đây là dữ liệu giả lập. Kho video mẫu cũ của Google (`commondatastorage.googleapis.com/gtv-videos-bucket`) đã bị chặn (403) nên không dùng nữa.
+- Nếu `vtube.db` được tạo trước khi đổi link thì video sẽ không phát được: xóa `vtube.db` rồi chạy lại backend để nạp seed mới.
