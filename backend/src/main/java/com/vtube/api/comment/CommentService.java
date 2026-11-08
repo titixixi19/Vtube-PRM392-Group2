@@ -96,7 +96,7 @@ public class CommentService {
                         INSERT INTO comments (video_id, user_id, parent_id, content)
                         VALUES (:vid, :uid, :pid, :content)""",
                 Db.params().addValue("vid", videoId).addValue("uid", uid).addValue("pid", rootId).addValue("content", text));
-        db.jdbc().update("UPDATE videos SET comment_count = comment_count + 1 WHERE id = :vid",
+        db.jdbc().update("UPDATE videos SET comment_count = COALESCE(comment_count, 0) + 1 WHERE id = :vid",
                 Db.params().addValue("vid", videoId));
         if (rootId != null) {
             db.jdbc().update("UPDATE comments SET reply_count = reply_count + 1 WHERE id = :id",
@@ -135,7 +135,7 @@ public class CommentService {
         Object parent = c.get("parent_id");
         long removed = 1 + (parent == null ? ((Number) c.get("reply_count")).longValue() : 0);
         db.jdbc().update("DELETE FROM comments WHERE id = :id", Db.params().addValue("id", id));
-        db.jdbc().update("UPDATE videos SET comment_count = MAX(0, comment_count - :n) WHERE id = :vid",
+        db.jdbc().update("UPDATE videos SET comment_count = MAX(0, COALESCE(comment_count, 0) - :n) WHERE id = :vid",
                 Db.params().addValue("n", removed).addValue("vid", videoId));
         if (parent != null) {
             db.jdbc().update("UPDATE comments SET reply_count = MAX(0, reply_count - 1) WHERE id = :pid",

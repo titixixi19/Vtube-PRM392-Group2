@@ -38,6 +38,7 @@ class _ShortsScreenState extends State<ShortsScreen> with WidgetsBindingObserver
 
   final Map<int, int> _reactions = {};
   final Map<int, int> _likeCounts = {};
+  final Map<int, int> _commentCounts = {};
   final Map<int, bool> _subscribedChannels = {};
 
   int _currentPage = 0;
@@ -417,7 +418,12 @@ class _ShortsScreenState extends State<ShortsScreen> with WidgetsBindingObserver
                 );
               }
 
-              final short = _shorts[index];
+              final original = _shorts[index];
+              final commentCount = _commentCounts[original.id] ?? original.commentCount;
+              final short = original.copyWith(
+                commentCount: commentCount,
+                likeCount: _likeCounts[original.id],
+              );
               final controller = _controllers[index];
               final myReaction = _reactions[short.id] ?? short.viewer?.myReaction ?? 0;
               final likeCount = _likeCounts[short.id] ?? short.likeCount;
@@ -440,13 +446,24 @@ class _ShortsScreenState extends State<ShortsScreen> with WidgetsBindingObserver
                 },
                 onOpenComments: () async {
                   _controllers[_currentPage]?.pause();
-                  await showCommentsSheet(
+                  final count = await showCommentsSheet(
                     context,
                     short.id,
                     channelId: short.channel.id,
                     commentsEnabled: short.commentsEnabled,
-                    totalCommentCount: short.commentCount,
+                    totalCommentCount: _commentCounts[short.id] ?? short.commentCount,
+                    onCommentCountChanged: (newCount, latestComment) {
+                      if (!mounted) return;
+                      setState(() {
+                        _commentCounts[short.id] = newCount;
+                      });
+                    },
                   );
+                  if (count != null && mounted) {
+                    setState(() {
+                      _commentCounts[short.id] = count;
+                    });
+                  }
                   if (mounted && _effectiveActive) {
                     _playCurrent();
                   }

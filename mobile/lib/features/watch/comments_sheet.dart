@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -13,14 +15,15 @@ import 'widgets/comment_input_box.dart';
 import 'widgets/comment_item_tile.dart';
 
 /// MÀN 7 · BÌNH LUẬN (bottom sheet) · Người 2
-Future<void> showCommentsSheet(
+Future<int?> showCommentsSheet(
   BuildContext context,
   int videoId, {
   int? channelId,
   bool commentsEnabled = true,
   int? totalCommentCount,
+  void Function(int newCount, Comment? latestComment)? onCommentCountChanged,
 }) {
-  return showModalBottomSheet<void>(
+  return showModalBottomSheet<int>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
@@ -29,6 +32,7 @@ Future<void> showCommentsSheet(
       channelId: channelId,
       commentsEnabled: commentsEnabled,
       totalCommentCount: totalCommentCount,
+      onCommentCountChanged: onCommentCountChanged,
     ),
   );
 }
@@ -38,6 +42,7 @@ class CommentsSheetContent extends StatefulWidget {
   final int? channelId;
   final bool commentsEnabled;
   final int? totalCommentCount;
+  final void Function(int newCount, Comment? latestComment)? onCommentCountChanged;
 
   const CommentsSheetContent({
     super.key,
@@ -45,6 +50,7 @@ class CommentsSheetContent extends StatefulWidget {
     this.channelId,
     this.commentsEnabled = true,
     this.totalCommentCount,
+    this.onCommentCountChanged,
   });
 
   @override
@@ -103,10 +109,17 @@ class _CommentsSheetContentState extends State<CommentsSheetContent> {
         _hasMore = res.hasMore;
         _page++;
         _loading = false;
-        if (_totalCount == 0 && initial) {
-          _totalCount = widget.totalCommentCount ?? _comments.length;
+        if (_totalCount == 0 && initial && _comments.isNotEmpty) {
+          _totalCount = (widget.totalCommentCount != null && widget.totalCommentCount! > 0)
+              ? widget.totalCommentCount!
+              : _comments.length;
+        } else if (_comments.length > _totalCount) {
+          _totalCount = _comments.length;
         }
       });
+      if (initial && _totalCount > 0 && (widget.totalCommentCount == null || widget.totalCommentCount == 0)) {
+        widget.onCommentCountChanged?.call(_totalCount, _comments.isNotEmpty ? _comments.first : null);
+      }
     } on ApiException catch (e) {
       if (!mounted || curReq != _reqId) return;
       setState(() {
@@ -172,6 +185,7 @@ class _CommentsSheetContentState extends State<CommentsSheetContent> {
         }
         _replyingTo = null;
       });
+      widget.onCommentCountChanged?.call(_totalCount, parentId == null ? newComment : null);
       showSnack(context, 'Đã gửi bình luận');
     } on ApiException catch (e) {
       if (mounted) showSnack(context, e.message);
@@ -254,15 +268,14 @@ class _CommentsSheetContentState extends State<CommentsSheetContent> {
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(width: 8),
-                    if (_totalCount > 0)
-                      Text(
-                        Fmt.count(_totalCount),
-                        style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
-                      ),
+                    Text(
+                      Fmt.count(_totalCount),
+                      style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                    ),
                     const Spacer(),
                     IconButton(
                       icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () => Navigator.pop(context, _totalCount),
                     ),
                   ],
                 ),
@@ -338,10 +351,25 @@ class _CommentsSheetContentState extends State<CommentsSheetContent> {
                                       setState(() => _replyingTo = target);
                                     },
                                     onDelete: (id) {
+                                      final idx = _comments.indexWhere((c) => c.id == id);
+                                      final removedCount = idx != -1 ? (1 + _comments[idx].replyCount) : 1;
                                       setState(() {
                                         _comments.removeWhere((c) => c.id == id);
-                                        if (_totalCount > 0) _totalCount--;
+                                        _totalCount = math.max(0, _totalCount - removedCount);
                                       });
+                                      widget.onCommentCountChanged?.call(
+                                        _totalCount,
+                                        _comments.isNotEmpty ? _comments.first : null,
+                                      );
+                                    },
+                                    onReplyDeleted: (id) {
+                                      setState(() {
+                                        _totalCount = math.max(0, _totalCount - 1);
+                                      });
+                                      widget.onCommentCountChanged?.call(
+                                        _totalCount,
+                                        _comments.isNotEmpty ? _comments.first : null,
+                                      );
                                     },
                                     onUpdated: _onCommentUpdated,
                                   );
