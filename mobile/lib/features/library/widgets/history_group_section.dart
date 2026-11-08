@@ -56,13 +56,13 @@ class HistoryPausedBanner extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFF332B14),
+        color: AppColors.warningBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFFFCA28).withValues(alpha: 0.3)),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.pause_circle_outline, color: Color(0xFFFFCA28), size: 24),
+          const Icon(Icons.pause_circle_outline, color: AppColors.warning, size: 24),
           const SizedBox(width: 12),
           const Expanded(
             child: Text(
@@ -77,7 +77,7 @@ class HistoryPausedBanner extends StatelessWidget {
           TextButton(
             onPressed: onResume,
             style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFFFFCA28),
+              foregroundColor: AppColors.warning,
               padding: const EdgeInsets.symmetric(horizontal: 10),
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,

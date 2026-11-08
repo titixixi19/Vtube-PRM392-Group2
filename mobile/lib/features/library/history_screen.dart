@@ -51,6 +51,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
   int _requestId = 0;
   bool? _lastLoggedIn;
 
+  final _pendingDeletes = <int, Future<void> Function()>{};
+
   @override
   void initState() {
     super.initState();
@@ -78,6 +80,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
     _searchFocus.dispose();
     _scroll.removeListener(_onScroll);
     _scroll.dispose();
+    for (final action in _pendingDeletes.values) {
+      action();
+    }
+    _pendingDeletes.clear();
     super.dispose();
   }
 
@@ -87,13 +93,22 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
   }
 
-  Future<void> _refresh() async {
+  Future<void> _refresh({bool isFilterChange = false}) async {
     final reqId = ++_requestId;
+    if (_pendingDeletes.isNotEmpty) {
+      for (final action in _pendingDeletes.values) {
+        action();
+      }
+      _pendingDeletes.clear();
+      ScaffoldMessenger.maybeOf(context)?.hideCurrentSnackBar();
+    }
+    final prevItems = List<HistoryItem>.from(_items);
+    final prevPage = _page;
+    final prevHasMore = _hasMore;
+
     setState(() {
       _loading = true;
       _error = null;
-      _page = 0;
-      _hasMore = true;
     });
 
     try {
@@ -115,10 +130,24 @@ class _HistoryScreenState extends State<HistoryScreen> {
       });
     } catch (e) {
       if (!mounted || reqId != _requestId) return;
+      final msg = e is ApiException ? e.message : 'Không thể tải lịch sử xem. Vui lòng thử lại sau.';
       setState(() {
         _loading = false;
-        _error = e is ApiException ? e.message : 'Không thể tải lịch sử xem. Vui lòng thử lại sau.';
+        _error = msg;
+        if (isFilterChange) {
+          _items.clear();
+          _page = 0;
+          _hasMore = false;
+        } else {
+          _items.clear();
+          _items.addAll(prevItems);
+          _page = prevPage;
+          _hasMore = prevHasMore;
+        }
       });
+      if (!isFilterChange && prevItems.isNotEmpty) {
+        showSnack(context, msg);
+      }
     }
   }
 
@@ -144,16 +173,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
         _hasMore = res.hasMore;
         _loading = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted || reqId != _requestId) return;
-      setState(() => _loading = false);
+      setState(() {
+        _loading = false;
+        _hasMore = false;
+      });
+      showSnack(context, e is ApiException ? e.message : 'Không thể tải thêm nhật ký xem');
     }
   }
 
   void _onTypeSelected(int index) {
     if (_selectedType == index) return;
     setState(() => _selectedType = index);
-    _refresh();
+    _refresh(isFilterChange: true);
   }
 
   void _openSearch() {
@@ -168,14 +201,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
       _searching = false;
       _query = '';
     });
-    _refresh();
+    _refresh(isFilterChange: true);
   }
 
   void _onSearchChanged(String val) {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () {
       setState(() => _query = val);
-      _refresh();
+      _refresh(isFilterChange: true);
     });
   }
 
@@ -185,34 +218,56 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
     setState(() => _items.removeAt(index));
 
-    try {
-      await context.read<HistoryService>().delete(item.video.id);
-    } catch (_) {}
+    final historyService = context.read<HistoryService>();
+    final messenger = ScaffoldMessenger.of(context);
+    bool undone = false;
 
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: const Text('Đã xóa khỏi nhật ký xem'),
-          action: SnackBarAction(
-            label: 'Hoàn tác',
-            textColor: AppColors.link,
-            onPressed: () => _undoDelete(item, index),
-          ),
+    Future<void> performDelete() async {
+      try {
+        await historyService.delete(item.video.id);
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            final safeIndex = index.clamp(0, _items.length);
+            _items.insert(safeIndex, item);
+          });
+          showSnack(context, e is ApiException ? e.message : 'Không thể xóa video khỏi nhật ký xem');
+        }
+      }
+    }
+
+    _pendingDeletes[item.video.id] = performDelete;
+
+    messenger.hideCurrentSnackBar();
+    final controller = messenger.showSnackBar(
+      SnackBar(
+        content: const Text('Đã xóa khỏi nhật ký xem'),
+        action: SnackBarAction(
+          label: 'Hoàn tác',
+          textColor: AppColors.link,
+          onPressed: () {
+            undone = true;
+            _pendingDeletes.remove(item.video.id);
+            if (!mounted) return;
+            setState(() {
+              final safeIndex = index.clamp(0, _items.length);
+              _items.insert(safeIndex, item);
+            });
+          },
         ),
-      );
-  }
+      ),
+    );
 
-  Future<void> _undoDelete(HistoryItem item, int originalIndex) async {
-    setState(() {
-      final safeIndex = originalIndex.clamp(0, _items.length);
-      _items.insert(safeIndex, item);
+    controller.closed.then((reason) async {
+      if (undone || reason == SnackBarClosedReason.action) {
+        _pendingDeletes.remove(item.video.id);
+        return;
+      }
+      final action = _pendingDeletes.remove(item.video.id);
+      if (action != null) {
+        await action();
+      }
     });
-
-    try {
-      await context.read<HistoryService>().saveProgress(item.video.id, item.progressSeconds);
-    } catch (_) {}
   }
 
   Future<void> _confirmClearAll() async {
@@ -236,6 +291,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
 
     if (confirmed != true || !mounted) return;
+
+    if (_pendingDeletes.isNotEmpty) {
+      for (final action in _pendingDeletes.values) {
+        action();
+      }
+      _pendingDeletes.clear();
+      ScaffoldMessenger.maybeOf(context)?.hideCurrentSnackBar();
+    }
 
     try {
       await context.read<HistoryService>().clear();

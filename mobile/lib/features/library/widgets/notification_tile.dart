@@ -35,7 +35,7 @@ class NotificationSectionHeader extends StatelessWidget {
               decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(10)),
               child: Text(
                 '$badgeCount',
-                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
               ),
             ),
           ],
@@ -74,7 +74,7 @@ class NotificationTile extends StatelessWidget {
   Widget _buildTypeBadge() {
     IconData icon;
     Color bg;
-    Color fg = Colors.white;
+    Color fg = AppColors.textPrimary;
 
     switch (item.type) {
       case 'new_video':
@@ -225,12 +225,12 @@ class NotificationTile extends StatelessWidget {
                             margin: const EdgeInsets.all(3),
                             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
                             decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.8),
+                              color: AppColors.background.withValues(alpha: 0.8),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
                               Fmt.duration(item.videoDurationSeconds!),
-                              style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w500),
+                              style: const TextStyle(fontSize: 10, color: AppColors.textPrimary, fontWeight: FontWeight.w500),
                             ),
                           ),
                       ],

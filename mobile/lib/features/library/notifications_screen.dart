@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -70,13 +72,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  Future<void> _refresh() async {
+  Future<void> _refresh({bool isChipChange = false}) async {
     final reqId = ++_requestId;
+    final prevItems = List<NotificationItem>.from(_items);
+    final prevPage = _page;
+    final prevHasMore = _hasMore;
+
     setState(() {
       _loading = true;
       _error = null;
-      _page = 0;
-      _hasMore = true;
     });
 
     try {
@@ -92,10 +96,24 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       });
     } catch (e) {
       if (!mounted || reqId != _requestId) return;
+      final msg = e is ApiException ? e.message : 'Không thể tải thông báo. Vui lòng thử lại sau.';
       setState(() {
         _loading = false;
-        _error = e is ApiException ? e.message : 'Không thể tải thông báo. Vui lòng thử lại sau.';
+        _error = msg;
+        if (isChipChange) {
+          _items.clear();
+          _page = 0;
+          _hasMore = false;
+        } else {
+          _items.clear();
+          _items.addAll(prevItems);
+          _page = prevPage;
+          _hasMore = prevHasMore;
+        }
       });
+      if (!isChipChange && prevItems.isNotEmpty) {
+        showSnack(context, msg);
+      }
     }
   }
 
@@ -115,16 +133,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         _hasMore = res.hasMore;
         _loading = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted || reqId != _requestId) return;
-      setState(() => _loading = false);
+      setState(() {
+        _loading = false;
+        _hasMore = false;
+      });
+      showSnack(context, e is ApiException ? e.message : 'Không thể tải thêm thông báo');
     }
   }
 
   void _onChipSelected(int index) {
     if (_selectedChip == index) return;
     setState(() => _selectedChip = index);
-    _refresh();
+    _refresh(isChipChange: true);
   }
 
   Future<void> _markAllRead() async {
@@ -158,7 +180,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  Future<void> _onTapNotification(NotificationItem item) async {
+  void _onTapNotification(NotificationItem item) {
     if (!item.read) {
       final index = _items.indexWhere((e) => e.id == item.id);
       if (index != -1) {
@@ -178,12 +200,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           );
         });
       }
-      try {
-        await context.read<NotificationService>().markRead(item.id);
-      } catch (_) {}
+      unawaited(context.read<NotificationService>().markRead(item.id).catchError((_) {}));
     }
-
-    if (!mounted) return;
 
     if (item.type == 'new_short' && item.videoId != null) {
       context.push(AppRoutes.shortsAt(item.videoId!));

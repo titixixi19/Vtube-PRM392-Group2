@@ -25,6 +25,10 @@ class AppColors {
   static const divider = Color(0xFF353534);
   static const error = Color(0xFFFFB4AB);
 
+  /// Cảnh báo, banner tạm dừng lịch sử xem.
+  static const warningBg = Color(0xFF332B14);
+  static const warning = Color(0xFFFFCA28);
+
   /// Chip đang chọn: nền trắng chữ đen.
   static const chipSelectedBg = Color(0xFFF1F1F1);
   static const chipSelectedFg = Color(0xFF0F0F0F);

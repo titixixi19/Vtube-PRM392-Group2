@@ -59,7 +59,7 @@ class _PlaylistEditDialogState extends State<PlaylistEditDialog> {
       final updated = await context.read<PlaylistService>().update(
             widget.playlist.id,
             title: title,
-            description: desc.isEmpty ? null : desc,
+            description: desc,
             visibility: _visibility,
           );
       if (!mounted) return;

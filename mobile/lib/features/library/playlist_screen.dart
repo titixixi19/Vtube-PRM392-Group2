@@ -38,6 +38,7 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
   bool _loading = true;
   String? _error;
   bool _isForbidden = false;
+  final _pendingRemoves = <int, Future<void> Function()>{};
 
   @override
   void initState() {
@@ -45,7 +46,24 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
     _loadDetail();
   }
 
+  @override
+  void dispose() {
+    for (final action in _pendingRemoves.values) {
+      action();
+    }
+    _pendingRemoves.clear();
+    super.dispose();
+  }
+
   Future<void> _loadDetail() async {
+    if (_pendingRemoves.isNotEmpty) {
+      for (final action in _pendingRemoves.values) {
+        action();
+      }
+      _pendingRemoves.clear();
+      ScaffoldMessenger.maybeOf(context)?.hideCurrentSnackBar();
+    }
+
     setState(() {
       _loading = true;
       _error = null;
@@ -128,6 +146,14 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
 
     if (confirmed != true || !mounted) return;
 
+    if (_pendingRemoves.isNotEmpty) {
+      for (final action in _pendingRemoves.values) {
+        action();
+      }
+      _pendingRemoves.clear();
+      ScaffoldMessenger.maybeOf(context)?.hideCurrentSnackBar();
+    }
+
     try {
       await context.read<PlaylistService>().delete(widget.playlistId);
       if (!mounted) return;
@@ -143,35 +169,56 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
     final removed = _items[index];
     setState(() => _items.removeAt(index));
 
-    try {
-      await context.read<PlaylistService>().removeVideo(widget.playlistId, removed.video.id);
-    } catch (_) {}
+    final playlistService = context.read<PlaylistService>();
+    final messenger = ScaffoldMessenger.of(context);
+    bool undone = false;
 
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: const Text('Đã xóa khỏi danh sách phát'),
-          action: SnackBarAction(
-            label: 'Hoàn tác',
-            textColor: AppColors.link,
-            onPressed: () => _undoRemoveItem(removed, index),
-          ),
+    Future<void> performRemove() async {
+      try {
+        await playlistService.removeVideo(widget.playlistId, removed.video.id);
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            final safeIndex = index.clamp(0, _items.length);
+            _items.insert(safeIndex, removed);
+          });
+          showSnack(context, e is ApiException ? e.message : 'Không thể xóa khỏi danh sách phát');
+        }
+      }
+    }
+
+    _pendingRemoves[removed.video.id] = performRemove;
+
+    messenger.hideCurrentSnackBar();
+    final controller = messenger.showSnackBar(
+      SnackBar(
+        content: const Text('Đã xóa khỏi danh sách phát'),
+        action: SnackBarAction(
+          label: 'Hoàn tác',
+          textColor: AppColors.link,
+          onPressed: () {
+            undone = true;
+            _pendingRemoves.remove(removed.video.id);
+            if (!mounted) return;
+            setState(() {
+              final safeIndex = index.clamp(0, _items.length);
+              _items.insert(safeIndex, removed);
+            });
+          },
         ),
-      );
-  }
+      ),
+    );
 
-  Future<void> _undoRemoveItem(PlaylistItem item, int originalIndex) async {
-    setState(() {
-      final safeIndex = originalIndex.clamp(0, _items.length);
-      _items.insert(safeIndex, item);
+    controller.closed.then((reason) async {
+      if (undone || reason == SnackBarClosedReason.action) {
+        _pendingRemoves.remove(removed.video.id);
+        return;
+      }
+      final action = _pendingRemoves.remove(removed.video.id);
+      if (action != null) {
+        await action();
+      }
     });
-
-    try {
-      await context.read<PlaylistService>().addVideo(widget.playlistId, item.video.id);
-      _loadDetail();
-    } catch (_) {}
   }
 
   Future<void> _moveItemTo(int fromIndex, int toIndex) async {
@@ -344,6 +391,8 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
 
     final header = PlaylistHeader(
       detail: _detail!,
+      videoCount: _items.length,
+      coverUrl: _items.isEmpty ? '' : (_items.first.video.thumbnailUrl ?? _detail!.playlist.thumbnailUrl ?? ''),
       currentSort: _sort,
       onSortChanged: _onSortChanged,
       onPlayAll: _playAll,

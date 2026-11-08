@@ -50,7 +50,7 @@ class _SaveToPlaylistSheetState extends State<SaveToPlaylistSheet> {
       final list = await context.read<PlaylistService>().mine(videoId: widget.videoId);
       if (!mounted) return;
       setState(() {
-        _playlists = list;
+        _playlists = list.where((p) => p.kind != 'liked').toList();
         _loading = false;
       });
     } catch (e) {

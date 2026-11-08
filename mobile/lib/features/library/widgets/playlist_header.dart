@@ -16,6 +16,8 @@ import '../../../shared/widgets/chip_bar.dart';
 /// và thanh chip sắp xếp.
 class PlaylistHeader extends StatelessWidget {
   final PlaylistDetail detail;
+  final int? videoCount;
+  final String? coverUrl;
   final String currentSort;
   final ValueChanged<String> onSortChanged;
   final VoidCallback onPlayAll;
@@ -26,6 +28,8 @@ class PlaylistHeader extends StatelessWidget {
   const PlaylistHeader({
     super.key,
     required this.detail,
+    this.videoCount,
+    this.coverUrl,
     required this.currentSort,
     required this.onSortChanged,
     required this.onPlayAll,
@@ -38,6 +42,9 @@ class PlaylistHeader extends StatelessWidget {
   static const sortLabels = ['Thủ công', 'Mới thêm', 'Cũ nhất', 'Phổ biến', 'Ngày đăng'];
 
   String get _coverUrl {
+    if (coverUrl != null) {
+      return coverUrl!;
+    }
     if (detail.playlist.thumbnailUrl != null && detail.playlist.thumbnailUrl!.isNotEmpty) {
       return detail.playlist.thumbnailUrl!;
     }
@@ -90,6 +97,8 @@ class PlaylistHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final cover = _coverUrl;
     final selectedSortIndex = sortModes.indexOf(currentSort).clamp(0, sortModes.length - 1);
+
+    final totalVideos = videoCount ?? detail.items.length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -154,20 +163,20 @@ class PlaylistHeader extends StatelessWidget {
                               margin: const EdgeInsets.all(8),
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.8),
+                                color: AppColors.background.withValues(alpha: 0.8),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.playlist_play, size: 14, color: Colors.white),
+                                  const Icon(Icons.playlist_play, size: 14, color: AppColors.textPrimary),
                                   const SizedBox(width: 4),
                                   Text(
-                                    '${detail.items.length} VIDEO',
+                                    '$totalVideos VIDEO',
                                     style: const TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.white,
+                                      color: AppColors.textPrimary,
                                     ),
                                   ),
                                 ],
@@ -215,7 +224,7 @@ class PlaylistHeader extends StatelessWidget {
                       ),
                       const Text('·', style: TextStyle(color: AppColors.textSecondary)),
                       Text(
-                        '${detail.playlist.videoCount} video',
+                        '${videoCount ?? detail.playlist.videoCount} video',
                         style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
                       ),
                       const Text('·', style: TextStyle(color: AppColors.textSecondary)),
@@ -235,9 +244,11 @@ class PlaylistHeader extends StatelessWidget {
                       IconButton.filledTonal(
                         icon: const Icon(Icons.arrow_downward, size: 20),
                         tooltip: 'Tải xuống',
-                        onPressed: () {
-                          showSnack(context, 'Đang tải xuống 1/${detail.items.length} video');
-                        },
+                        onPressed: totalVideos > 0
+                            ? () {
+                                showSnack(context, 'Đang tải xuống 1/$totalVideos video');
+                              }
+                            : null,
                       ),
                       const SizedBox(width: 12),
                       IconButton.filledTonal(
@@ -265,7 +276,7 @@ class PlaylistHeader extends StatelessWidget {
                     children: [
                       Expanded(
                         child: FilledButton.icon(
-                          onPressed: detail.items.isNotEmpty ? onPlayAll : null,
+                          onPressed: totalVideos > 0 ? onPlayAll : null,
                           icon: const Icon(Icons.play_arrow),
                           label: const Text('Phát tất cả'),
                           style: FilledButton.styleFrom(
@@ -278,7 +289,7 @@ class PlaylistHeader extends StatelessWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: FilledButton.icon(
-                          onPressed: detail.items.isNotEmpty ? onShuffle : null,
+                          onPressed: totalVideos > 0 ? onShuffle : null,
                           icon: const Icon(Icons.shuffle),
                           label: const Text('Trộn bài'),
                           style: FilledButton.styleFrom(
