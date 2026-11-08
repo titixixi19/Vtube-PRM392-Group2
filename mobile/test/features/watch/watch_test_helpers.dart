@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vtube/app/theme.dart';
@@ -101,8 +100,8 @@ class FakeVideoService extends VideoService {
   int? lastReactValue;
 
   List<Category> returnCategories = [
-    const Category(id: 1, name: 'Âm nhạc', slug: 'music', orderIndex: 1),
-    const Category(id: 2, name: 'Gaming', slug: 'gaming', orderIndex: 2),
+    const Category(id: 1, name: 'Âm nhạc', slug: 'music'),
+    const Category(id: 2, name: 'Gaming', slug: 'gaming'),
   ];
 
   PageResult<Video> returnFeed = PageResult(
@@ -186,7 +185,7 @@ class FakeVideoService extends VideoService {
   Future<ReactionResult> react(int id, int value) async {
     reactCalls++;
     lastReactValue = value;
-    return ReactionResult(myReaction: value, likeCount: value == 1 ? 101 : 100);
+    return ReactionResult(value == 1 ? 101 : 100, 5, value);
   }
 
   @override
@@ -218,7 +217,6 @@ class FakeCommentService extends CommentService {
     page: 0,
     size: 20,
     hasMore: false,
-    total: 2,
   );
 
   PageResult<Comment> returnReplies = PageResult(
@@ -303,14 +301,67 @@ class FakeChannelService extends ChannelService {
   int unsubscribeCalls = 0;
 
   @override
-  Future<void> subscribe(int channelId) async {
+  Future<SubscriptionResult> subscribe(int channelId, {String? notifyMode}) async {
     subscribeCalls++;
+    return const SubscriptionResult(true, 'all', 1500001);
   }
 
   @override
-  Future<void> unsubscribe(int channelId) async {
+  Future<SubscriptionResult> unsubscribe(int channelId) async {
     unsubscribeCalls++;
+    return const SubscriptionResult(false, null, 1500000);
   }
+}
+
+class FakeAuthService extends AuthService {
+  FakeAuthService(super.api);
+
+  @override
+  Future<AuthResult> login(String email, String password) async => const AuthResult(
+        'fake_token',
+        Me(
+          id: 1,
+          email: 'user@test.vn',
+          displayName: 'User Test',
+          createdAt: '2026-01-01T00:00:00Z',
+          channel: dummyChannel,
+        ),
+      );
+
+  @override
+  Future<Me> me() async => const Me(
+        id: 1,
+        email: 'user@test.vn',
+        displayName: 'User Test',
+        createdAt: '2026-01-01T00:00:00Z',
+        channel: dummyChannel,
+      );
+}
+
+class FakeAuthProvider extends AuthProvider {
+  final bool _loggedIn;
+
+  FakeAuthProvider({bool isLoggedIn = false, TokenStorage? tokens, ApiClient? api, AuthService? auth})
+      : _loggedIn = isLoggedIn,
+        super(
+          auth ?? FakeAuthService(api ?? ApiClient(tokens ?? TokenStorage())),
+          tokens ?? TokenStorage(),
+          api ?? ApiClient(tokens ?? TokenStorage()),
+        );
+
+  @override
+  bool get isLoggedIn => _loggedIn;
+
+  @override
+  Me? get user => _loggedIn
+      ? const Me(
+          id: 1,
+          email: 'user@test.vn',
+          displayName: 'User Test',
+          createdAt: '2026-01-01T00:00:00Z',
+          channel: dummyChannel,
+        )
+      : null;
 }
 
 Widget buildTestWatchApp({
@@ -320,11 +371,17 @@ Widget buildTestWatchApp({
   FakeHistoryService? historyService,
   FakeChannelService? channelService,
   AuthProvider? authProvider,
+  bool isLoggedIn = false,
 }) {
   SharedPreferences.setMockInitialValues({});
   final tokens = TokenStorage();
   final api = ApiClient(tokens);
-  final authService = AuthService(api);
+  final authService = FakeAuthService(api);
+
+  final effectiveAuth = authProvider ??
+      (isLoggedIn
+          ? FakeAuthProvider(isLoggedIn: true, tokens: tokens, api: api, auth: authService)
+          : AuthProvider(authService, tokens, api));
 
   return MultiProvider(
     providers: [
@@ -333,7 +390,7 @@ Widget buildTestWatchApp({
       Provider<HistoryService>.value(value: historyService ?? FakeHistoryService()),
       Provider<ChannelService>.value(value: channelService ?? FakeChannelService()),
       ChangeNotifierProvider<AuthProvider>.value(
-        value: authProvider ?? AuthProvider(authService, tokens, api),
+        value: effectiveAuth,
       ),
     ],
     child: MaterialApp(

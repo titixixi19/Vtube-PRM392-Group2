@@ -13,11 +13,19 @@ void main() {
     });
 
     testWidgets('Hiển thị thanh category chips và danh sách video', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
       await tester.pumpWidget(buildTestWatchApp(
         videoService: videoService,
         child: const HomeScreen(),
       ));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.widgetWithText(ChoiceChip, 'Tất cả'), findsOneWidget);
       expect(find.widgetWithText(ChoiceChip, 'Âm nhạc'), findsOneWidget);
@@ -30,6 +38,7 @@ void main() {
     testWidgets('Bấm 3 chấm và chọn "Không quan tâm": ẩn video khỏi danh sách', (tester) async {
       await tester.pumpWidget(buildTestWatchApp(
         videoService: videoService,
+        isLoggedIn: true,
         child: const HomeScreen(),
       ));
       await tester.pumpAndSettle();

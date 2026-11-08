@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../app/routes.dart';
+import '../../../app/theme.dart';
 import '../../../data/models/models.dart';
 import '../../../data/services/video_service.dart';
 import '../../../shared/widgets/chip_bar.dart';
@@ -131,7 +132,7 @@ class _RelatedVideosSectionState extends State<RelatedVideosSection> {
           )
         else if (visibleVideos.isEmpty)
           const Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24),
+            padding: EdgeInsets.symmetric(vertical: 24),
             child: Center(
               child: Text(
                 'Không có video gợi ý',

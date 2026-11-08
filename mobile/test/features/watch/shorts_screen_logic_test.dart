@@ -17,7 +17,8 @@ void main() {
         videoService: videoService,
         child: const ShortsScreen(),
       ));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
 
       expect(videoService.shortsCalls, 1);
       expect(find.text('Shorts 1'), findsOneWidget);
@@ -28,14 +29,15 @@ void main() {
         videoService: videoService,
         child: const ShortsScreen(),
       ));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
 
       final callsInitial = videoService.shortsCalls;
       expect(callsInitial, 1);
 
       // Thao tác cuộn nhẹ không làm dồn dập request
       await tester.drag(find.byType(PageView), const Offset(0, -100));
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
 
       expect(videoService.shortsCalls, callsInitial);
     });

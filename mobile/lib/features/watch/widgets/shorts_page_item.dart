@@ -94,6 +94,14 @@ class _ShortsPageItemState extends State<ShortsPageItem> with SingleTickerProvid
     super.dispose();
   }
 
+  Future<void> _openChannel(BuildContext context, int channelId) async {
+    widget.controller?.pause();
+    await context.push(AppRoutes.channel(channelId));
+    if (mounted && widget.isCurrent) {
+      widget.controller?.play();
+    }
+  }
+
   void _handleSingleTap() {
     final controller = widget.controller;
     if (controller == null || !controller.value.isInitialized) return;
@@ -281,12 +289,12 @@ class _ShortsPageItemState extends State<ShortsPageItem> with SingleTickerProvid
                   ChannelAvatar(
                     url: short.channel.avatarUrl,
                     size: 36,
-                    onTap: () => context.push(AppRoutes.channel(short.channel.id)),
+                    onTap: () => _openChannel(context, short.channel.id),
                   ),
                   const SizedBox(width: 8),
                   Flexible(
                     child: GestureDetector(
-                      onTap: () => context.push(AppRoutes.channel(short.channel.id)),
+                      onTap: () => _openChannel(context, short.channel.id),
                       child: Text(
                         '@${short.channel.handle}',
                         maxLines: 1,

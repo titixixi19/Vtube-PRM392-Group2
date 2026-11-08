@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../app/theme.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/network/api_exception.dart';
 import '../../data/models/models.dart';
@@ -49,7 +50,7 @@ class _VideoScreenState extends State<VideoScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _historyService = context.read<HistoryService>();
-    _isLoggedIn = context.read<AuthProvider>().isLoggedIn;
+    _isLoggedIn = context.watch<AuthProvider>().isLoggedIn;
   }
 
   @override
@@ -87,7 +88,7 @@ class _VideoScreenState extends State<VideoScreen> {
     if (progressToSave == _lastSavedSeconds) return;
 
     _lastSavedSeconds = progressToSave;
-    _historyService!.saveProgress(videoId, progressToSave).catchError((_) {});
+    _historyService!.saveProgress(videoId, progressToSave).catchError((_) => false);
   }
 
   Future<void> _loadVideoData() async {
@@ -194,6 +195,7 @@ class _VideoScreenState extends State<VideoScreen> {
                         context,
                         video.id,
                         channelId: video.channel.id,
+                        commentsEnabled: video.commentsEnabled,
                         totalCommentCount: video.commentCount,
                       ),
                     ),

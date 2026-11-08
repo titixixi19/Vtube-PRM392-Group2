@@ -103,10 +103,8 @@ class _CommentsSheetContentState extends State<CommentsSheetContent> {
         _hasMore = res.hasMore;
         _page++;
         _loading = false;
-        if (_totalCount == 0 && res.total != null && res.total! > 0) {
-          _totalCount = res.total!;
-        } else if (_totalCount == 0 && initial) {
-          _totalCount = _comments.length;
+        if (_totalCount == 0 && initial) {
+          _totalCount = widget.totalCommentCount ?? _comments.length;
         }
       });
     } on ApiException catch (e) {
@@ -330,7 +328,7 @@ class _CommentsSheetContentState extends State<CommentsSheetContent> {
 
                                   final comment = _comments[index];
                                   return CommentItemTile(
-                                    key: ValueKey('comment-${comment.id}'),
+                                    key: _tileKeys.putIfAbsent(comment.id, () => GlobalKey<CommentItemTileState>()),
                                     comment: comment,
                                     isChannelOwner: isChannelOwner,
                                     onReply: (target) {

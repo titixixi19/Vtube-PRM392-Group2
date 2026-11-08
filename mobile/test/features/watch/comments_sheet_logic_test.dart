@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:vtube/core/network/api_exception.dart';
 import 'package:vtube/features/watch/comments_sheet.dart';
 
 import 'watch_test_helpers.dart';
@@ -46,6 +45,7 @@ void main() {
     testWidgets('Gửi bình luận mới: thêm vào danh sách và tăng tổng số', (tester) async {
       await tester.pumpWidget(buildTestWatchApp(
         commentService: commentService,
+        isLoggedIn: true,
         child: const Scaffold(
           body: CommentsSheetContent(videoId: 1),
         ),

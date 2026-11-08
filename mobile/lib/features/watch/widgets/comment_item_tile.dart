@@ -65,6 +65,7 @@ class CommentItemTileState extends State<CommentItemTile> {
     if (!await requireLogin(context)) return;
     if (!mounted) return;
 
+    final previous = _comment;
     final prevReaction = _comment.myReaction;
     final prevLikes = _comment.likeCount;
 
@@ -104,8 +105,9 @@ class CommentItemTileState extends State<CommentItemTile> {
       widget.onUpdated?.call(res);
     } catch (_) {
       if (!mounted) return;
-      setState(() => _comment = widget.comment);
-      widget.onUpdated?.call(widget.comment);
+      setState(() => _comment = previous);
+      widget.onUpdated?.call(previous);
+      showSnack(context, 'Không thể cập nhật phản hồi');
     }
   }
 

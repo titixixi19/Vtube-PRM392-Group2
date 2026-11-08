@@ -7,6 +7,24 @@ import '../core/auth/require_login.dart';
 import '../shared/widgets/channel_avatar.dart';
 import 'routes.dart';
 
+/// Scope truyền trạng thái tab Shorts đang được chọn hay không.
+class ShortsTabScope extends InheritedWidget {
+  final bool isActive;
+
+  const ShortsTabScope({
+    super.key,
+    required this.isActive,
+    required super.child,
+  });
+
+  static bool of(BuildContext context) {
+    return context.dependOnInheritedWidgetOfExactType<ShortsTabScope>()?.isActive ?? true;
+  }
+
+  @override
+  bool updateShouldNotify(ShortsTabScope oldWidget) => isActive != oldWidget.isActive;
+}
+
 /// Khung có Bottom Navigation: Trang chủ, Shorts, (+) Tạo, Kênh đăng ký, Bạn.
 /// Mỗi tab giữ trạng thái riêng (cuộn tới đâu vẫn ở đó khi quay lại).
 class MainShell extends StatelessWidget {
@@ -71,27 +89,30 @@ class MainShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
     final isShorts = navigationShell.currentIndex == 1;
-    return Scaffold(
-      body: navigationShell,
-      backgroundColor: isShorts ? Colors.black : null,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _branchToSlot[navigationShell.currentIndex],
-        onDestinationSelected: (slot) => _onTap(context, slot),
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        destinations: [
-          const NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Trang chủ'),
-          const NavigationDestination(
-              icon: Icon(Icons.slow_motion_video_outlined), selectedIcon: Icon(Icons.slow_motion_video), label: 'Shorts'),
-          const NavigationDestination(icon: Icon(Icons.add_circle_outline, size: 36), label: ''),
-          const NavigationDestination(
-              icon: Icon(Icons.subscriptions_outlined), selectedIcon: Icon(Icons.subscriptions), label: 'Kênh đăng ký'),
-          NavigationDestination(
-            icon: user == null
-                ? const Icon(Icons.account_circle_outlined)
-                : ChannelAvatar(url: user.avatarUrl, size: 26),
-            label: 'Bạn',
-          ),
-        ],
+    return ShortsTabScope(
+      isActive: isShorts,
+      child: Scaffold(
+        body: navigationShell,
+        backgroundColor: isShorts ? Colors.black : null,
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: _branchToSlot[navigationShell.currentIndex],
+          onDestinationSelected: (slot) => _onTap(context, slot),
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          destinations: [
+            const NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Trang chủ'),
+            const NavigationDestination(
+                icon: Icon(Icons.slow_motion_video_outlined), selectedIcon: Icon(Icons.slow_motion_video), label: 'Shorts'),
+            const NavigationDestination(icon: Icon(Icons.add_circle_outline, size: 36), label: ''),
+            const NavigationDestination(
+                icon: Icon(Icons.subscriptions_outlined), selectedIcon: Icon(Icons.subscriptions), label: 'Kênh đăng ký'),
+            NavigationDestination(
+              icon: user == null
+                  ? const Icon(Icons.account_circle_outlined)
+                  : ChannelAvatar(url: user.avatarUrl, size: 26),
+              label: 'Bạn',
+            ),
+          ],
+        ),
       ),
     );
   }

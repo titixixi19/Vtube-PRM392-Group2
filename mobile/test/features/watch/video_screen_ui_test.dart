@@ -29,7 +29,7 @@ void main() {
       expect(find.text('VTech Studio'), findsOneWidget);
       // Hiển thị số sub format: 1.5M người đăng ký
       expect(find.text('1,5 Tr người đăng ký'), findsOneWidget);
-      expect(find.text('Thích'), findsOneWidget);
+      expect(find.byIcon(Icons.thumb_up_outlined), findsOneWidget);
       expect(find.text('Chia sẻ'), findsOneWidget);
     });
 

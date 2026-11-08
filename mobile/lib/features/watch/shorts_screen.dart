@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 
-import '../../app/routes.dart';
+import '../../app/main_shell.dart';
 import '../../app/theme.dart';
 import '../../core/config/api_config.dart';
 import '../../data/models/models.dart';
@@ -15,8 +14,13 @@ import 'widgets/shorts_page_item.dart';
 /// MÀN 8 · SHORTS · Người 2 (tab 2)
 class ShortsScreen extends StatefulWidget {
   final int? startVideoId;
+  final bool isActive;
 
-  const ShortsScreen({super.key, this.startVideoId});
+  const ShortsScreen({
+    super.key,
+    this.startVideoId,
+    this.isActive = true,
+  });
 
   @override
   State<ShortsScreen> createState() => _ShortsScreenState();
@@ -38,7 +42,7 @@ class _ShortsScreenState extends State<ShortsScreen> with WidgetsBindingObserver
   bool _hasMore = true;
   bool _loading = false;
   bool _loadingMore = false;
-  bool _wasActive = true;
+  bool _effectiveActive = true;
   String? _error;
 
   @override
@@ -50,6 +54,48 @@ class _ShortsScreenState extends State<ShortsScreen> with WidgetsBindingObserver
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncActiveState();
+  }
+
+  @override
+  void didUpdateWidget(covariant ShortsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActive != widget.isActive) {
+      _syncActiveState();
+    }
+  }
+
+  void _syncActiveState() {
+    final tabActive = ShortsTabScope.of(context);
+    final routeCurrent = ModalRoute.of(context)?.isCurrent ?? true;
+    final active = widget.isActive && tabActive && routeCurrent;
+
+    if (_effectiveActive != active) {
+      _effectiveActive = active;
+      if (active) {
+        _playCurrent();
+      } else {
+        _pauseAll();
+      }
+    }
+  }
+
+  void _playCurrent() {
+    final cur = _controllers[_currentPage];
+    if (cur != null && cur.value.isInitialized) {
+      cur.play();
+    }
+  }
+
+  void _pauseAll() {
+    for (final c in _controllers.values) {
+      c.pause();
+    }
+  }
+
+  @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _pageController.dispose();
@@ -57,24 +103,13 @@ class _ShortsScreenState extends State<ShortsScreen> with WidgetsBindingObserver
     super.dispose();
   }
 
-  bool _isScreenActive(BuildContext context) {
-    final isCurrent = ModalRoute.of(context)?.isCurrent ?? true;
-    if (!isCurrent) return false;
-    try {
-      final loc = GoRouterState.of(context).matchedLocation;
-      return loc.startsWith(AppRoutes.shorts);
-    } catch (_) {
-      return true;
-    }
-  }
-
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
-      _controllers[_currentPage]?.pause();
+      _pauseAll();
     } else if (state == AppLifecycleState.resumed) {
-      if (_wasActive && _isScreenActive(context)) {
-        _controllers[_currentPage]?.play();
+      if (_effectiveActive) {
+        _playCurrent();
       }
     }
   }
@@ -232,7 +267,7 @@ class _ShortsScreenState extends State<ShortsScreen> with WidgetsBindingObserver
 
     final controller = _controllers[index];
     if (controller != null && controller.value.isInitialized) {
-      if (_isScreenActive(context)) {
+      if (_effectiveActive) {
         controller.play();
       }
 
@@ -280,18 +315,6 @@ class _ShortsScreenState extends State<ShortsScreen> with WidgetsBindingObserver
 
   @override
   Widget build(BuildContext context) {
-    final active = _isScreenActive(context);
-    if (!active && _wasActive) {
-      _wasActive = false;
-      _controllers[_currentPage]?.pause();
-    } else if (active && !_wasActive) {
-      _wasActive = true;
-      final cur = _controllers[_currentPage];
-      if (cur != null && cur.value.isInitialized) {
-        cur.play();
-      }
-    }
-
     if (_loading && _shorts.isEmpty) {
       return const Scaffold(
         backgroundColor: Colors.black,
@@ -342,6 +365,7 @@ class _ShortsScreenState extends State<ShortsScreen> with WidgetsBindingObserver
               context,
               short.id,
               channelId: short.channel.id,
+              commentsEnabled: short.commentsEnabled,
               totalCommentCount: short.commentCount,
             ),
           );

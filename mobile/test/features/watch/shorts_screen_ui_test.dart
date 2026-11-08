@@ -17,25 +17,27 @@ void main() {
         videoService: videoService,
         child: const ShortsScreen(),
       ));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.byType(PageView), findsOneWidget);
       expect(find.text('Shorts 1'), findsOneWidget);
       expect(find.text('@vtechstudio'), findsOneWidget);
     });
 
-    testWidgets('Hiển thị các icon tương tác: Like, Bình luận, Chia sẻ, Âm thanh', (tester) async {
+    testWidgets('Hiển thị các icon tương tác: Like, Bình luận, Chia sẻ, Remix', (tester) async {
       await tester.pumpWidget(buildTestWatchApp(
         videoService: videoService,
         child: const ShortsScreen(),
       ));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.byIcon(Icons.thumb_up_outlined), findsOneWidget);
       expect(find.byIcon(Icons.thumb_down_outlined), findsOneWidget);
-      expect(find.byIcon(Icons.chat_bubble_outline), findsOneWidget);
-      expect(find.byIcon(Icons.share), findsOneWidget);
-      expect(find.byIcon(Icons.music_note), findsOneWidget);
+      expect(find.byIcon(Icons.comment_outlined), findsOneWidget);
+      expect(find.byIcon(Icons.share_outlined), findsOneWidget);
+      expect(find.byIcon(Icons.sync), findsOneWidget);
     });
   });
 }

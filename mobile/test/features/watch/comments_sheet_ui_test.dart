@@ -15,6 +15,7 @@ void main() {
     testWidgets('Hiển thị header, tổng số bình luận và ô nhập', (tester) async {
       await tester.pumpWidget(buildTestWatchApp(
         commentService: commentService,
+        isLoggedIn: true,
         child: const Scaffold(
           body: CommentsSheetContent(
             videoId: 1,
