@@ -35,6 +35,7 @@ class _RelatedVideosSectionState extends State<RelatedVideosSection> {
   bool _hasMore = true;
   bool _loading = false;
   String? _error;
+  int _reqId = 0;
 
   @override
   void initState() {
@@ -52,7 +53,9 @@ class _RelatedVideosSectionState extends State<RelatedVideosSection> {
   }
 
   Future<void> _loadVideos({bool initial = false}) async {
-    if (_loading) return;
+    if (!initial && _loading) return;
+    final curReq = ++_reqId;
+
     if (initial) {
       setState(() {
         _videos.clear();
@@ -74,7 +77,7 @@ class _RelatedVideosSectionState extends State<RelatedVideosSection> {
             page: _page,
           );
 
-      if (!mounted) return;
+      if (!mounted || curReq != _reqId) return;
 
       setState(() {
         _videos.addAll(res.items);
@@ -83,7 +86,7 @@ class _RelatedVideosSectionState extends State<RelatedVideosSection> {
         _loading = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || curReq != _reqId) return;
       setState(() {
         _error = 'Không thể tải video gợi ý';
         _loading = false;
@@ -128,11 +131,11 @@ class _RelatedVideosSectionState extends State<RelatedVideosSection> {
           )
         else if (visibleVideos.isEmpty)
           const Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
+            padding: const EdgeInsets.symmetric(vertical: 24),
             child: Center(
               child: Text(
                 'Không có video gợi ý',
-                style: TextStyle(color: Colors.white54, fontSize: 13),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
               ),
             ),
           )
@@ -164,7 +167,11 @@ class _RelatedVideosSectionState extends State<RelatedVideosSection> {
                 onMore: () => showVideoOptionsSheet(
                   context,
                   video,
-                  onHidden: () => setState(() => _hiddenVideoIds.add(video.id)),
+                  onHidden: () {
+                    if (mounted) {
+                      setState(() => _hiddenVideoIds.add(video.id));
+                    }
+                  },
                 ),
               );
             },

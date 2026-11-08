@@ -256,9 +256,9 @@ class _VideoInfoSectionState extends State<VideoInfoSection> {
                         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                       ),
                       const SizedBox(height: 2),
-                      const Text(
-                        'Kênh đối tác',
-                        style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                      Text(
+                        Fmt.subscribers(video.channel.subscriberCount),
+                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
                       ),
                     ],
                   ),

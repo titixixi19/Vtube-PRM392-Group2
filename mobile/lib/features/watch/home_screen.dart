@@ -28,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
     CategoryChipItem(label: 'Tất cả', slug: null),
   ];
   int _selectedCategoryIndex = 0;
+  int _reqId = 0;
 
   final _videos = <Video>[];
   final _shorts = <Video>[];
@@ -83,6 +84,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String? get _currentCategorySlug => _categories.isEmpty ? null : _categories[_selectedCategoryIndex].slug;
 
   Future<void> _refresh() async {
+    final curReq = ++_reqId;
+
     setState(() {
       _videos.clear();
       _page = 0;
@@ -90,21 +93,25 @@ class _HomeScreenState extends State<HomeScreen> {
       _error = null;
       _errorMore = null;
       _loading = true;
+      _loadingMore = false;
     });
 
     final videoService = context.read<VideoService>();
 
-    // Tải song song Shorts và Feed trang đầu
+    // Tải song song Shorts và Feed; Shorts lỗi tách riêng không làm hỏng cả Trang chủ
     try {
-      final results = await Future.wait([
-        videoService.feed(category: _currentCategorySlug, page: 0),
-        videoService.shorts(size: 10),
-      ]);
+      final feedFuture = videoService.feed(category: _currentCategorySlug, page: 0);
+      final shortsFuture = videoService.shorts(size: 10).catchError((_) => const PageResult<Video>(
+            items: [],
+            page: 0,
+            size: 10,
+            hasMore: false,
+          ));
 
-      if (!mounted) return;
+      final feedRes = await feedFuture;
+      final shortsRes = await shortsFuture;
 
-      final feedRes = results[0];
-      final shortsRes = results[1];
+      if (!mounted || curReq != _reqId) return;
 
       setState(() {
         _videos.addAll(feedRes.items);
@@ -116,13 +123,13 @@ class _HomeScreenState extends State<HomeScreen> {
         _loading = false;
       });
     } on ApiException catch (e) {
-      if (!mounted) return;
+      if (!mounted || curReq != _reqId) return;
       setState(() {
         _error = e.message;
         _loading = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || curReq != _reqId) return;
       setState(() {
         _error = 'Không thể kết nối đến máy chủ';
         _loading = false;
@@ -132,6 +139,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadMore() async {
     if (_loading || _loadingMore || !_hasMore) return;
+    final curReq = _reqId;
 
     setState(() {
       _loadingMore = true;
@@ -144,7 +152,7 @@ class _HomeScreenState extends State<HomeScreen> {
             page: _page,
           );
 
-      if (!mounted) return;
+      if (!mounted || curReq != _reqId) return;
 
       setState(() {
         _videos.addAll(feedRes.items);
@@ -153,13 +161,13 @@ class _HomeScreenState extends State<HomeScreen> {
         _loadingMore = false;
       });
     } on ApiException catch (e) {
-      if (!mounted) return;
+      if (!mounted || curReq != _reqId) return;
       setState(() {
         _errorMore = e.message;
         _loadingMore = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || curReq != _reqId) return;
       setState(() {
         _errorMore = 'Lỗi tải thêm';
         _loadingMore = false;
@@ -178,13 +186,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onCategorySelected(int index) {
-    if (_selectedCategoryIndex == index) return;
+    if (_selectedCategoryIndex == index && !_loading) return;
     setState(() => _selectedCategoryIndex = index);
     _scrollToTop();
     _refresh();
   }
 
   void _onHideVideo(int videoId) {
+    if (!mounted) return;
     setState(() => _hiddenVideoIds.add(videoId));
   }
 

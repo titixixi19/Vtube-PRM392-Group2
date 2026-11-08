@@ -13,20 +13,39 @@ import 'widgets/comment_input_box.dart';
 import 'widgets/comment_item_tile.dart';
 
 /// MÀN 7 · BÌNH LUẬN (bottom sheet) · Người 2
-Future<void> showCommentsSheet(BuildContext context, int videoId, {int? channelId}) {
+Future<void> showCommentsSheet(
+  BuildContext context,
+  int videoId, {
+  int? channelId,
+  bool commentsEnabled = true,
+  int? totalCommentCount,
+}) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (ctx) => CommentsSheetContent(videoId: videoId, channelId: channelId),
+    builder: (ctx) => CommentsSheetContent(
+      videoId: videoId,
+      channelId: channelId,
+      commentsEnabled: commentsEnabled,
+      totalCommentCount: totalCommentCount,
+    ),
   );
 }
 
 class CommentsSheetContent extends StatefulWidget {
   final int videoId;
   final int? channelId;
+  final bool commentsEnabled;
+  final int? totalCommentCount;
 
-  const CommentsSheetContent({super.key, required this.videoId, this.channelId});
+  const CommentsSheetContent({
+    super.key,
+    required this.videoId,
+    this.channelId,
+    this.commentsEnabled = true,
+    this.totalCommentCount,
+  });
 
   @override
   State<CommentsSheetContent> createState() => _CommentsSheetContentState();
@@ -35,22 +54,27 @@ class CommentsSheetContent extends StatefulWidget {
 class _CommentsSheetContentState extends State<CommentsSheetContent> {
   String _sort = 'top'; // top | new
   final _comments = <Comment>[];
+  final Map<int, GlobalKey<CommentItemTileState>> _tileKeys = {};
   int _totalCount = 0;
   int _page = 0;
   bool _hasMore = true;
   bool _loading = false;
   String? _error;
+  int _reqId = 0;
 
   Comment? _replyingTo;
 
   @override
   void initState() {
     super.initState();
+    _totalCount = widget.totalCommentCount ?? 0;
     _loadComments(initial: true);
   }
 
   Future<void> _loadComments({bool initial = false}) async {
-    if (_loading) return;
+    if (!initial && _loading) return;
+    final curReq = ++_reqId;
+
     if (initial) {
       setState(() {
         _comments.clear();
@@ -72,23 +96,27 @@ class _CommentsSheetContentState extends State<CommentsSheetContent> {
             size: 20,
           );
 
-      if (!mounted) return;
+      if (!mounted || curReq != _reqId) return;
 
       setState(() {
         _comments.addAll(res.items);
         _hasMore = res.hasMore;
         _page++;
         _loading = false;
-        if (initial) _totalCount = _comments.length;
+        if (_totalCount == 0 && res.total != null && res.total! > 0) {
+          _totalCount = res.total!;
+        } else if (_totalCount == 0 && initial) {
+          _totalCount = _comments.length;
+        }
       });
     } on ApiException catch (e) {
-      if (!mounted) return;
+      if (!mounted || curReq != _reqId) return;
       setState(() {
         _error = e.message;
         _loading = false;
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || curReq != _reqId) return;
       setState(() {
         _error = 'Không thể tải bình luận';
         _loading = false;
@@ -138,12 +166,51 @@ class _CommentsSheetContentState extends State<CommentsSheetContent> {
               myReaction: p.myReaction,
             );
           }
+          // Thêm reply vào thread của comment cha
+          _tileKeys[parentId]?.currentState?.addReply(newComment);
         }
         _replyingTo = null;
       });
       showSnack(context, 'Đã gửi bình luận');
     } on ApiException catch (e) {
       if (mounted) showSnack(context, e.message);
+    }
+  }
+
+  void _onCommentUpdated(Comment updated) {
+    final idx = _comments.indexWhere((c) => c.id == updated.id);
+    if (idx != -1) {
+      setState(() {
+        if (updated.pinned) {
+          // Bỏ ghim các bình luận khác
+          for (int i = 0; i < _comments.length; i++) {
+            if (_comments[i].id != updated.id && _comments[i].pinned) {
+              final old = _comments[i];
+              _comments[i] = Comment(
+                id: old.id,
+                videoId: old.videoId,
+                parentId: old.parentId,
+                content: old.content,
+                likeCount: old.likeCount,
+                replyCount: old.replyCount,
+                pinned: false,
+                hearted: old.hearted,
+                createdAt: old.createdAt,
+                updatedAt: old.updatedAt,
+                author: old.author,
+                byChannelOwner: old.byChannelOwner,
+                myReaction: old.myReaction,
+              );
+            }
+          }
+          _comments[idx] = updated;
+          // Đưa bình luận ghim lên đầu
+          _comments.removeAt(idx);
+          _comments.insert(0, updated);
+        } else {
+          _comments[idx] = updated;
+        }
+      });
     }
   }
 
@@ -263,6 +330,7 @@ class _CommentsSheetContentState extends State<CommentsSheetContent> {
 
                                   final comment = _comments[index];
                                   return CommentItemTile(
+                                    key: ValueKey('comment-${comment.id}'),
                                     comment: comment,
                                     isChannelOwner: isChannelOwner,
                                     onReply: (target) {
@@ -274,21 +342,31 @@ class _CommentsSheetContentState extends State<CommentsSheetContent> {
                                         if (_totalCount > 0) _totalCount--;
                                       });
                                     },
-                                    onUpdated: (updated) {
-                                      final idx = _comments.indexWhere((c) => c.id == updated.id);
-                                      if (idx != -1) {
-                                        setState(() => _comments[idx] = updated);
-                                      }
-                                    },
+                                    onUpdated: _onCommentUpdated,
                                   );
                                 },
                               ),
               ),
-              // Ô nhập bình luận cố định ở đáy
-              CommentInputBox(
-                replyingTo: _replyingTo,
-                onCancelReply: () => setState(() => _replyingTo = null),
-                onSubmit: _submitComment,
+              // Ô nhập bình luận cố định ở đáy (hoặc thông báo nếu bình luận bị tắt)
+              Padding(
+                padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+                child: widget.commentsEnabled
+                    ? CommentInputBox(
+                        replyingTo: _replyingTo,
+                        onCancelReply: () => setState(() => _replyingTo = null),
+                        onSubmit: _submitComment,
+                      )
+                    : Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                        color: AppColors.surfaceHigh,
+                        child: const Center(
+                          child: Text(
+                            'Tính năng bình luận đã bị tắt cho video này.',
+                            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                          ),
+                        ),
+                      ),
               ),
             ],
           ),

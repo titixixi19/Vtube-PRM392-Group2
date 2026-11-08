@@ -20,6 +20,11 @@ class ShortsPageItem extends StatefulWidget {
   final VideoPlayerController? controller;
   final bool isCurrent;
   final VoidCallback onOpenComments;
+  final int? initialReaction;
+  final int? initialLikeCount;
+  final bool? initialSubscribed;
+  final void Function(int nextReaction, int nextLikes)? onReactionChanged;
+  final void Function(bool nextSubscribed)? onSubscribedChanged;
 
   const ShortsPageItem({
     super.key,
@@ -27,6 +32,11 @@ class ShortsPageItem extends StatefulWidget {
     required this.controller,
     required this.isCurrent,
     required this.onOpenComments,
+    this.initialReaction,
+    this.initialLikeCount,
+    this.initialSubscribed,
+    this.onReactionChanged,
+    this.onSubscribedChanged,
   });
 
   @override
@@ -48,7 +58,7 @@ class _ShortsPageItemState extends State<ShortsPageItem> with SingleTickerProvid
   @override
   void initState() {
     super.initState();
-    _subscribed = widget.short.viewer?.subscribed ?? false;
+    _subscribed = widget.initialSubscribed ?? widget.short.viewer?.subscribed ?? false;
 
     _heartAnimController = AnimationController(
       vsync: this,
@@ -73,8 +83,8 @@ class _ShortsPageItemState extends State<ShortsPageItem> with SingleTickerProvid
   @override
   void didUpdateWidget(covariant ShortsPageItem oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.short.id != widget.short.id) {
-      _subscribed = widget.short.viewer?.subscribed ?? false;
+    if (oldWidget.short.id != widget.short.id || oldWidget.initialSubscribed != widget.initialSubscribed) {
+      _subscribed = widget.initialSubscribed ?? widget.short.viewer?.subscribed ?? false;
     }
   }
 
@@ -121,6 +131,7 @@ class _ShortsPageItemState extends State<ShortsPageItem> with SingleTickerProvid
 
     final before = _subscribed;
     setState(() => _subscribed = !before);
+    widget.onSubscribedChanged?.call(!before);
 
     try {
       final channels = context.read<ChannelService>();
@@ -134,10 +145,12 @@ class _ShortsPageItemState extends State<ShortsPageItem> with SingleTickerProvid
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() => _subscribed = before);
+      widget.onSubscribedChanged?.call(before);
       showSnack(context, e.message);
     } catch (_) {
       if (!mounted) return;
       setState(() => _subscribed = before);
+      widget.onSubscribedChanged?.call(before);
     }
   }
 
@@ -246,6 +259,9 @@ class _ShortsPageItemState extends State<ShortsPageItem> with SingleTickerProvid
           child: ShortsActionColumn(
             key: _actionKey,
             short: short,
+            initialReaction: widget.initialReaction,
+            initialLikeCount: widget.initialLikeCount,
+            onReactionChanged: widget.onReactionChanged,
             onOpenComments: widget.onOpenComments,
           ),
         ),
