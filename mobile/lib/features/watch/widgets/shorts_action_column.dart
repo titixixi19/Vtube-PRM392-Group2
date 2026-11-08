@@ -16,11 +16,17 @@ import '../../../shared/widgets/app_network_image.dart';
 class ShortsActionColumn extends StatefulWidget {
   final Video short;
   final VoidCallback onOpenComments;
+  final int? initialReaction;
+  final int? initialLikeCount;
+  final void Function(int nextReaction, int nextLikes)? onReactionChanged;
 
   const ShortsActionColumn({
     super.key,
     required this.short,
     required this.onOpenComments,
+    this.initialReaction,
+    this.initialLikeCount,
+    this.onReactionChanged,
   });
 
   @override
@@ -35,8 +41,8 @@ class ShortsActionColumnState extends State<ShortsActionColumn> with SingleTicke
   @override
   void initState() {
     super.initState();
-    _myReaction = widget.short.viewer?.myReaction ?? 0;
-    _likeCount = widget.short.likeCount;
+    _myReaction = widget.initialReaction ?? widget.short.viewer?.myReaction ?? 0;
+    _likeCount = widget.initialLikeCount ?? widget.short.likeCount;
 
     _discAnimController = AnimationController(
       vsync: this,
@@ -47,9 +53,11 @@ class ShortsActionColumnState extends State<ShortsActionColumn> with SingleTicke
   @override
   void didUpdateWidget(covariant ShortsActionColumn oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.short.id != widget.short.id) {
-      _myReaction = widget.short.viewer?.myReaction ?? 0;
-      _likeCount = widget.short.likeCount;
+    if (oldWidget.short.id != widget.short.id ||
+        oldWidget.initialReaction != widget.initialReaction ||
+        oldWidget.initialLikeCount != widget.initialLikeCount) {
+      _myReaction = widget.initialReaction ?? widget.short.viewer?.myReaction ?? 0;
+      _likeCount = widget.initialLikeCount ?? widget.short.likeCount;
     }
   }
 
@@ -98,6 +106,7 @@ class ShortsActionColumnState extends State<ShortsActionColumn> with SingleTicke
       _myReaction = nextReaction;
       _likeCount = nextLikes;
     });
+    widget.onReactionChanged?.call(nextReaction, nextLikes);
 
     try {
       final res = await context.read<VideoService>().react(widget.short.id, nextReaction);
@@ -106,12 +115,14 @@ class ShortsActionColumnState extends State<ShortsActionColumn> with SingleTicke
         _myReaction = res.myReaction;
         _likeCount = res.likeCount;
       });
+      widget.onReactionChanged?.call(res.myReaction, res.likeCount);
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
         _myReaction = prevReaction;
         _likeCount = prevLikes;
       });
+      widget.onReactionChanged?.call(prevReaction, prevLikes);
       showSnack(context, e.message);
     } catch (_) {
       if (!mounted) return;
@@ -119,6 +130,7 @@ class ShortsActionColumnState extends State<ShortsActionColumn> with SingleTicke
         _myReaction = prevReaction;
         _likeCount = prevLikes;
       });
+      widget.onReactionChanged?.call(prevReaction, prevLikes);
     }
   }
 

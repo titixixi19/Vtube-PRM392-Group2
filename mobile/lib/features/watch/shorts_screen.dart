@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../app/main_shell.dart';
 import '../../app/theme.dart';
 import '../../core/config/api_config.dart';
 import '../../data/models/models.dart';
@@ -13,8 +14,13 @@ import 'widgets/shorts_page_item.dart';
 /// MÀN 8 · SHORTS · Người 2 (tab 2)
 class ShortsScreen extends StatefulWidget {
   final int? startVideoId;
+  final bool isActive;
 
-  const ShortsScreen({super.key, this.startVideoId});
+  const ShortsScreen({
+    super.key,
+    this.startVideoId,
+    this.isActive = true,
+  });
 
   @override
   State<ShortsScreen> createState() => _ShortsScreenState();
@@ -25,11 +31,18 @@ class _ShortsScreenState extends State<ShortsScreen> with WidgetsBindingObserver
   final _shorts = <Video>[];
   final Map<int, VideoPlayerController> _controllers = {};
   final Set<int> _visitedIndices = {};
+  final Set<int> _initializingIndices = {};
+
+  final Map<int, int> _reactions = {};
+  final Map<int, int> _likeCounts = {};
+  final Map<int, bool> _subscribedChannels = {};
 
   int _currentPage = 0;
   int _page = 0;
   bool _hasMore = true;
   bool _loading = false;
+  bool _loadingMore = false;
+  bool _effectiveActive = true;
   String? _error;
 
   @override
@@ -38,6 +51,48 @@ class _ShortsScreenState extends State<ShortsScreen> with WidgetsBindingObserver
     WidgetsBinding.instance.addObserver(this);
     _pageController = PageController();
     _loadInitialShorts();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncActiveState();
+  }
+
+  @override
+  void didUpdateWidget(covariant ShortsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActive != widget.isActive) {
+      _syncActiveState();
+    }
+  }
+
+  void _syncActiveState() {
+    final tabActive = ShortsTabScope.of(context);
+    final routeCurrent = ModalRoute.of(context)?.isCurrent ?? true;
+    final active = widget.isActive && tabActive && routeCurrent;
+
+    if (_effectiveActive != active) {
+      _effectiveActive = active;
+      if (active) {
+        _playCurrent();
+      } else {
+        _pauseAll();
+      }
+    }
+  }
+
+  void _playCurrent() {
+    final cur = _controllers[_currentPage];
+    if (cur != null && cur.value.isInitialized) {
+      cur.play();
+    }
+  }
+
+  void _pauseAll() {
+    for (final c in _controllers.values) {
+      c.pause();
+    }
   }
 
   @override
@@ -51,7 +106,11 @@ class _ShortsScreenState extends State<ShortsScreen> with WidgetsBindingObserver
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
-      _controllers[_currentPage]?.pause();
+      _pauseAll();
+    } else if (state == AppLifecycleState.resumed) {
+      if (_effectiveActive) {
+        _playCurrent();
+      }
     }
   }
 
@@ -101,6 +160,7 @@ class _ShortsScreenState extends State<ShortsScreen> with WidgetsBindingObserver
         _loading = false;
       });
 
+      _pageController.dispose();
       _pageController = PageController(initialPage: initialIndex);
 
       // Khởi tạo controller cho video hiện tại và preload video kế tiếp
@@ -118,7 +178,8 @@ class _ShortsScreenState extends State<ShortsScreen> with WidgetsBindingObserver
   }
 
   Future<void> _loadMoreShorts() async {
-    if (_loading || !_hasMore) return;
+    if (_loading || _loadingMore || !_hasMore) return;
+    _loadingMore = true;
 
     try {
       final res = await context.read<VideoService>().shorts(page: _page, size: 10);
@@ -128,35 +189,70 @@ class _ShortsScreenState extends State<ShortsScreen> with WidgetsBindingObserver
         _shorts.addAll(res.items);
         _hasMore = res.hasMore;
         _page++;
+        _loadingMore = false;
       });
     } catch (_) {
-      // Bỏ qua lỗi ngầm khi cuộn tải thêm
+      if (mounted) {
+        setState(() => _loadingMore = false);
+      }
     }
   }
 
   Future<void> _initController(int index) async {
     if (index < 0 || index >= _shorts.length) return;
     if (_controllers.containsKey(index)) return;
+    if (_initializingIndices.contains(index)) return;
 
+    _initializingIndices.add(index);
     final short = _shorts[index];
     final resolvedUrl = ApiConfig.resolveUrl(short.videoUrl);
-    if (resolvedUrl == null) return;
+    if (resolvedUrl == null) {
+      _initializingIndices.remove(index);
+      if (index == _currentPage && mounted) {
+        _skipToNextShort(index);
+      }
+      return;
+    }
 
+    VideoPlayerController? controller;
     try {
-      final controller = VideoPlayerController.networkUrl(Uri.parse(resolvedUrl));
+      controller = VideoPlayerController.networkUrl(Uri.parse(resolvedUrl));
       await controller.initialize();
       await controller.setLooping(true);
+
+      _initializingIndices.remove(index);
 
       if (!mounted) {
         controller.dispose();
         return;
       }
 
+      // Hủy ngay nếu người dùng đã lướt đi xa quá 1 trang
+      if ((index - _currentPage).abs() > 1) {
+        controller.dispose();
+        return;
+      }
+
+      _controllers[index]?.dispose();
       setState(() {
-        _controllers[index] = controller;
+        _controllers[index] = controller!;
       });
     } catch (_) {
-      // Lỗi nạp video
+      _initializingIndices.remove(index);
+      controller?.dispose();
+      if (index == _currentPage && mounted) {
+        _skipToNextShort(index);
+      }
+    }
+  }
+
+  void _skipToNextShort(int failedIndex) {
+    if (!mounted || failedIndex != _currentPage) return;
+    if (failedIndex + 1 < _shorts.length && _pageController.hasClients) {
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
     }
   }
 
@@ -166,9 +262,14 @@ class _ShortsScreenState extends State<ShortsScreen> with WidgetsBindingObserver
     }
 
     if (!mounted) return;
+    // Bắt buộc kiểm tra index vẫn là trang hiện tại để chống phát đè âm thanh
+    if (index != _currentPage) return;
+
     final controller = _controllers[index];
     if (controller != null && controller.value.isInitialized) {
-      controller.play();
+      if (_effectiveActive) {
+        controller.play();
+      }
 
       // Tăng view đúng 1 lần khi bắt đầu xem
       if (_visitedIndices.add(index)) {
@@ -241,15 +342,31 @@ class _ShortsScreenState extends State<ShortsScreen> with WidgetsBindingObserver
         itemBuilder: (context, index) {
           final short = _shorts[index];
           final controller = _controllers[index];
+          final myReaction = _reactions[short.id] ?? short.viewer?.myReaction ?? 0;
+          final likeCount = _likeCounts[short.id] ?? short.likeCount;
+          final isSubscribed = _subscribedChannels[short.channel.id] ?? short.viewer?.subscribed ?? false;
 
           return ShortsPageItem(
+            key: ValueKey('short-${short.id}'),
             short: short,
             controller: controller,
             isCurrent: index == _currentPage,
+            initialReaction: myReaction,
+            initialLikeCount: likeCount,
+            initialSubscribed: isSubscribed,
+            onReactionChanged: (reaction, likes) {
+              _reactions[short.id] = reaction;
+              _likeCounts[short.id] = likes;
+            },
+            onSubscribedChanged: (subscribed) {
+              _subscribedChannels[short.channel.id] = subscribed;
+            },
             onOpenComments: () => showCommentsSheet(
               context,
               short.id,
               channelId: short.channel.id,
+              commentsEnabled: short.commentsEnabled,
+              totalCommentCount: short.commentCount,
             ),
           );
         },

@@ -164,6 +164,7 @@ class VideoPlayerViewState extends State<VideoPlayerView> {
                       const SizedBox(height: 12),
                       OutlinedButton(
                         onPressed: () {
+                          _disposeControllers();
                           setState(() {
                             _hasError = false;
                             _isInitialized = false;

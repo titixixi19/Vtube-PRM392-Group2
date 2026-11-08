@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../app/theme.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/network/api_exception.dart';
 import '../../data/models/models.dart';
@@ -34,6 +35,9 @@ class _VideoScreenState extends State<VideoScreen> {
 
   Timer? _progressTimer;
   int _lastSavedSeconds = 0;
+  int _currentPositionSeconds = 0;
+  HistoryService? _historyService;
+  bool _isLoggedIn = false;
 
   @override
   void initState() {
@@ -43,10 +47,19 @@ class _VideoScreenState extends State<VideoScreen> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _historyService = context.read<HistoryService>();
+    _isLoggedIn = context.watch<AuthProvider>().isLoggedIn;
+  }
+
+  @override
   void didUpdateWidget(covariant VideoScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.videoId != widget.videoId) {
-      _saveProgressNow();
+      _saveProgressDirect(oldWidget.videoId, _currentPositionSeconds);
+      _currentPositionSeconds = 0;
+      _lastSavedSeconds = 0;
       _loadVideoData();
     }
   }
@@ -54,30 +67,28 @@ class _VideoScreenState extends State<VideoScreen> {
   @override
   void dispose() {
     _progressTimer?.cancel();
-    _saveProgressNow();
+    if (_currentPositionSeconds > 0) {
+      _saveProgressDirect(widget.videoId, _currentPositionSeconds);
+    }
     super.dispose();
   }
 
   void _startProgressTimer() {
     _progressTimer = Timer.periodic(const Duration(seconds: 10), (_) {
-      _saveProgressNow();
+      if (_currentPositionSeconds > 0) {
+        _saveProgressDirect(widget.videoId, _currentPositionSeconds);
+      }
     });
   }
 
-  Future<void> _saveProgressNow() async {
-    if (!mounted) return;
-    final isLoggedIn = context.read<AuthProvider>().isLoggedIn;
-    if (!isLoggedIn) return;
+  void _saveProgressDirect(int videoId, int seconds) {
+    if (!_isLoggedIn || _historyService == null) return;
+    // Tối thiểu 1 giây để đảm bảo xem dưới 10s rồi Back vẫn vào lịch sử
+    final progressToSave = seconds > 0 ? seconds : 1;
+    if (progressToSave == _lastSavedSeconds) return;
 
-    final currentSeconds = _playerKey.currentState?.currentPositionSeconds ?? 0;
-    if (currentSeconds > 0 && currentSeconds != _lastSavedSeconds) {
-      _lastSavedSeconds = currentSeconds;
-      try {
-        await context.read<HistoryService>().saveProgress(widget.videoId, currentSeconds);
-      } catch (_) {
-        // Bỏ qua lỗi ngầm khi lưu tiến độ
-      }
-    }
+    _lastSavedSeconds = progressToSave;
+    _historyService!.saveProgress(videoId, progressToSave).catchError((_) => false);
   }
 
   Future<void> _loadVideoData() async {
@@ -126,9 +137,13 @@ class _VideoScreenState extends State<VideoScreen> {
     }
   }
 
-  void _onVideoStarted() {
+  void _onVideoStarted() async {
+    // Đánh dấu ít nhất 1 giây để nếu người dùng Back ngay vẫn lưu lịch sử
+    if (_currentPositionSeconds == 0) {
+      _currentPositionSeconds = 1;
+    }
     try {
-      context.read<VideoService>().addView(widget.videoId);
+      await context.read<VideoService>().addView(widget.videoId);
     } catch (_) {
       // Bỏ qua lỗi tăng view
     }
@@ -138,7 +153,7 @@ class _VideoScreenState extends State<VideoScreen> {
   Widget build(BuildContext context) {
     if (_loading) {
       return Scaffold(
-        appBar: AppBar(backgroundColor: Colors.black),
+        appBar: AppBar(backgroundColor: AppColors.background),
         body: const LoadingView(),
       );
     }
@@ -165,6 +180,7 @@ class _VideoScreenState extends State<VideoScreen> {
               videoUrl: video.videoUrl,
               initialProgressSeconds: video.viewer?.progressSeconds ?? 0,
               onStarted: _onVideoStarted,
+              onProgress: (seconds) => _currentPositionSeconds = seconds,
             ),
             // Phần cuộn bên dưới: thông tin, tương tác, gợi ý
             Expanded(
@@ -175,7 +191,13 @@ class _VideoScreenState extends State<VideoScreen> {
                     VideoInfoSection(
                       video: video,
                       previewComment: _previewComment,
-                      onOpenComments: () => showCommentsSheet(context, video.id, channelId: video.channel.id),
+                      onOpenComments: () => showCommentsSheet(
+                        context,
+                        video.id,
+                        channelId: video.channel.id,
+                        commentsEnabled: video.commentsEnabled,
+                        totalCommentCount: video.commentCount,
+                      ),
                     ),
                     const Divider(height: 1),
                     RelatedVideosSection(videoId: video.id),

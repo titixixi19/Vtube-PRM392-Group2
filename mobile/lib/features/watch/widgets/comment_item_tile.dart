@@ -30,15 +30,22 @@ class CommentItemTile extends StatefulWidget {
   });
 
   @override
-  State<CommentItemTile> createState() => _CommentItemTileState();
+  State<CommentItemTile> createState() => CommentItemTileState();
 }
 
-class _CommentItemTileState extends State<CommentItemTile> {
+class CommentItemTileState extends State<CommentItemTile> {
   late Comment _comment;
   bool _expandedText = false;
   bool _showReplies = false;
   bool _loadingReplies = false;
   final _replies = <Comment>[];
+
+  void addReply(Comment reply) {
+    setState(() {
+      _replies.add(reply);
+      _showReplies = true;
+    });
+  }
 
   @override
   void initState() {
@@ -58,6 +65,7 @@ class _CommentItemTileState extends State<CommentItemTile> {
     if (!await requireLogin(context)) return;
     if (!mounted) return;
 
+    final previous = _comment;
     final prevReaction = _comment.myReaction;
     final prevLikes = _comment.likeCount;
 
@@ -97,8 +105,9 @@ class _CommentItemTileState extends State<CommentItemTile> {
       widget.onUpdated?.call(res);
     } catch (_) {
       if (!mounted) return;
-      setState(() => _comment = widget.comment);
-      widget.onUpdated?.call(widget.comment);
+      setState(() => _comment = previous);
+      widget.onUpdated?.call(previous);
+      showSnack(context, 'Không thể cập nhật phản hồi');
     }
   }
 
@@ -162,7 +171,7 @@ class _CommentItemTileState extends State<CommentItemTile> {
                 },
               ),
             ],
-            if (isChannelOwner) ...[
+            if (isChannelOwner && _comment.parentId == null) ...[
               ListTile(
                 leading: Icon(_comment.pinned ? Icons.push_pin_outlined : Icons.push_pin),
                 title: Text(_comment.pinned ? 'Bỏ ghim bình luận' : 'Ghim bình luận'),
@@ -178,8 +187,10 @@ class _CommentItemTileState extends State<CommentItemTile> {
                   }
                 },
               ),
+            ],
+            if (isChannelOwner) ...[
               ListTile(
-                leading: Icon(_comment.hearted ? Icons.favorite_border : Icons.favorite, color: Colors.red),
+                leading: Icon(_comment.hearted ? Icons.favorite_border : Icons.favorite, color: AppColors.accent),
                 title: Text(_comment.hearted ? 'Bỏ thả tim' : 'Thả tim'),
                 onTap: () async {
                   Navigator.pop(ctx);
@@ -266,7 +277,7 @@ class _CommentItemTileState extends State<CommentItemTile> {
                 if (mounted) showSnack(context, e.message);
               }
             },
-            child: const Text('Xóa', style: TextStyle(color: Colors.black)),
+            child: const Text('Xóa', style: TextStyle(color: AppColors.chipSelectedFg)),
           ),
         ],
       ),
@@ -412,7 +423,7 @@ class _CommentItemTileState extends State<CommentItemTile> {
                         ),
                         if (_comment.hearted) ...[
                           const SizedBox(width: 12),
-                          const Icon(Icons.favorite, size: 14, color: Colors.red),
+                          const Icon(Icons.favorite, size: 14, color: AppColors.accent),
                         ],
                         const SizedBox(width: 16),
                         InkWell(
