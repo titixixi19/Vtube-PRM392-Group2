@@ -2,11 +2,20 @@
 import os
 OUT = os.path.join(os.path.dirname(__file__), '..', 'src', 'main', 'resources', 'seed.sql')
 PW = '$2a$10$ueBcRZp.K9su92eGHMstt.OLePw6NDKwm3hPmKAY8.BP1wROq9dni'  # = 123456
-S = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/'
-LONG = [('BigBuckBunny', 596), ('ElephantsDream', 653), ('Sintel', 888), ('TearsOfSteel', 734),
-        ('SubaruOutbackOnStreetAndDirt', 594), ('VolkswagenGTIReview', 594), ('WeAreGoingOnBullrun', 594),
-        ('WhatCarCanYouGetForAGrand', 609), ('ForBiggerFun', 60)]
-SHORT = [('ForBiggerBlazes', 15), ('ForBiggerEscapes', 15), ('ForBiggerJoyrides', 15), ('ForBiggerMeltdowns', 15)]
+# Video mẫu công khai: (url, thời lượng giây). Kho gtv-videos-bucket của Google đã chặn (403) từ 11/2026,
+# nên phim Blender lấy từ archive.org, clip ngắn lấy từ test-videos.co.uk và samplelib.com.
+# Cả hai đều trả 206 (hỗ trợ tua). Thời lượng đo từ file thật.
+BBB = 'https://archive.org/download/BigBuckBunny_124/Content/big_buck_bunny_720p_surround.mp4'
+LONG = [(BBB, 596),
+        ('https://archive.org/download/ElephantsDream/ed_hd.mp4', 653),
+        ('https://archive.org/download/Sintel/sintel-2048-stereo_512kb.mp4', 888),
+        ('https://archive.org/download/Tears-of-Steel/tears_of_steel_720p.mp4', 734),
+        ('https://samplelib.com/lib/preview/mp4/sample-30s.mp4', 30)]
+TV = 'https://test-videos.co.uk/vids/'
+SHORT = [(TV + 'bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4', 10),
+         (TV + 'jellyfish/mp4/h264/360/Jellyfish_360_10s_1MB.mp4', 10),
+         (TV + 'sintel/mp4/h264/360/Sintel_360_10s_1MB.mp4', 10),
+         ('https://samplelib.com/lib/preview/mp4/sample-15s.mp4', 15)]
 
 def q(s):
     return 'NULL' if s is None else "'" + str(s).replace("'", "''") + "'"
@@ -68,11 +77,11 @@ videos = [  # channel, title, category, views, likes, age
 vid = 0
 for n, (ch, title, cat, views, likes, age) in enumerate(videos):
     vid += 1
-    name, dur = LONG[n % len(LONG)]
-    out.append(f"INSERT OR IGNORE INTO videos (id,channel_id,title,description,thumbnail_url,video_url,duration_seconds,view_count,like_count,dislike_count,category_id,is_short,tags,published_at) VALUES ({vid},{ch},{q(title)},{q('Video mẫu của VTube: ' + title + '. #vtube #demo')},{q(f'https://picsum.photos/seed/vtube{vid}/640/360')},{q(S + name + '.mp4')},{dur},{views},{likes},{likes//40},{cat},0,'vtube,demo',{ago(age)});")
+    url, dur = LONG[n % len(LONG)]
+    out.append(f"INSERT OR IGNORE INTO videos (id,channel_id,title,description,thumbnail_url,video_url,duration_seconds,view_count,like_count,dislike_count,category_id,is_short,tags,published_at) VALUES ({vid},{ch},{q(title)},{q('Video mẫu của VTube: ' + title + '. #vtube #demo')},{q(f'https://picsum.photos/seed/vtube{vid}/640/360')},{q(url)},{dur},{views},{likes},{likes//40},{cat},0,'vtube,demo',{ago(age)});")
 # 1 video đang phát trực tiếp
 vid += 1
-out.append(f"INSERT OR IGNORE INTO videos (id,channel_id,title,description,thumbnail_url,video_url,duration_seconds,view_count,like_count,category_id,is_short,is_live,published_at) VALUES ({vid},3,'TRỰC TIẾP: Trải nghiệm ẩm thực đêm Chợ Lớn Sài Gòn','Livestream mẫu',{q(f'https://picsum.photos/seed/vtube{vid}/640/360')},{q(S + 'BigBuckBunny.mp4')},0,3200,400,5,0,1,{ago('-30 minutes')});")
+out.append(f"INSERT OR IGNORE INTO videos (id,channel_id,title,description,thumbnail_url,video_url,duration_seconds,view_count,like_count,category_id,is_short,is_live,published_at) VALUES ({vid},3,'TRỰC TIẾP: Trải nghiệm ẩm thực đêm Chợ Lớn Sài Gòn','Livestream mẫu',{q(f'https://picsum.photos/seed/vtube{vid}/640/360')},{q(BBB)},0,3200,400,5,0,1,{ago('-30 minutes')});")
 LIVE_ID = vid
 
 shorts = [(4, 'Góc quán cà phê trứng view triệu đô giữa phố cổ #hanoi', 6, 320000, 48200),
@@ -85,8 +94,8 @@ shorts = [(4, 'Góc quán cà phê trứng view triệu đô giữa phố cổ #
           (7, 'Pha lật kèo rank Thách Đấu', 2, 890000, 41000)]
 for n, (ch, title, cat, views, likes) in enumerate(shorts):
     vid += 1
-    name, dur = SHORT[n % len(SHORT)]
-    out.append(f"INSERT OR IGNORE INTO videos (id,channel_id,title,description,thumbnail_url,video_url,duration_seconds,view_count,like_count,category_id,is_short,published_at) VALUES ({vid},{ch},{q(title)},{q(title)},{q(f'https://picsum.photos/seed/short{vid}/360/640')},{q(S + name + '.mp4')},{dur},{views},{likes},{cat},1,{ago(f'-{n+1} days')});")
+    url, dur = SHORT[n % len(SHORT)]
+    out.append(f"INSERT OR IGNORE INTO videos (id,channel_id,title,description,thumbnail_url,video_url,duration_seconds,view_count,like_count,category_id,is_short,published_at) VALUES ({vid},{ch},{q(title)},{q(title)},{q(f'https://picsum.photos/seed/short{vid}/360/640')},{q(url)},{dur},{views},{likes},{cat},1,{ago(f'-{n+1} days')});")
 
 # Bình luận cho video 1 (của VTech Studio)
 comments = [  # id, video, user, parent, content, likes, pinned, hearted, age
