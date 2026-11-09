@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../app/main_shell.dart';
 import '../../app/routes.dart';
 import '../../app/theme.dart';
 import '../../core/auth/auth_provider.dart';
@@ -58,6 +59,7 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
   int _feedReqId = 0;
 
   bool? _lastLoggedIn;
+  bool? _lastTabActive;
 
   @override
   void initState() {
@@ -68,6 +70,18 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final isTabActive = SubscriptionsTabScope.maybeOf(context);
+    if (isTabActive != null && isTabActive != _lastTabActive) {
+      final wasInactive = _lastTabActive == false;
+      _lastTabActive = isTabActive;
+      if (isTabActive && wasInactive) {
+        final isLoggedIn = context.read<AuthProvider>().isLoggedIn;
+        if (isLoggedIn) {
+          _loadChannels();
+          _refreshFeed(silent: true);
+        }
+      }
+    }
     final isLoggedIn = context.watch<AuthProvider>().isLoggedIn;
     if (_lastLoggedIn != isLoggedIn) {
       _lastLoggedIn = isLoggedIn;
@@ -269,11 +283,27 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
     }
 
     if (!_loadingChannels && _channels.isEmpty) {
-      return EmptyView(
-        icon: Icons.subscriptions_outlined,
-        title: 'Hãy đăng ký kênh để xem video mới nhất tại đây',
-        actionLabel: 'Khám phá kênh',
-        onAction: () => context.go(AppRoutes.home),
+      return RefreshIndicator(
+        onRefresh: () async {
+          await _loadChannels();
+          await _refreshFeed(silent: true);
+        },
+        color: AppColors.accent,
+        backgroundColor: AppColors.surfaceContainer,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(
+              height: MediaQuery.of(context).size.height * 0.7,
+              child: EmptyView(
+                icon: Icons.subscriptions_outlined,
+                title: 'Hãy đăng ký kênh để xem video mới nhất tại đây',
+                actionLabel: 'Khám phá kênh',
+                onAction: () => context.go(AppRoutes.home),
+              ),
+            ),
+          ],
+        ),
       );
     }
 
@@ -294,8 +324,15 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
             selectedChannelId: _selectedChannelId,
             onChannelSelected: _onChannelSelected,
             onAllPressed: _openAllSubscriptions,
-            onViewChannelPressed:
-                _selectedChannelId != null ? () => context.push(AppRoutes.channel(_selectedChannelId!)) : null,
+            onViewChannelPressed: _selectedChannelId != null
+                ? () async {
+                    await context.push(AppRoutes.channel(_selectedChannelId!));
+                    if (mounted) {
+                      await _loadChannels();
+                      if (mounted) await _refreshFeed(silent: true);
+                    }
+                  }
+                : null,
           ),
 
           // 2. ChipBar chọn loại nội dung
@@ -335,7 +372,13 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                 key: Key('video_card_large_${v.id}'),
                 video: v,
                 onTap: () => v.isShort ? context.push(AppRoutes.shortsAt(v.id)) : context.push(AppRoutes.video(v.id)),
-                onChannelTap: () => context.push(AppRoutes.channel(v.channel.id)),
+                onChannelTap: () async {
+                  await context.push(AppRoutes.channel(v.channel.id));
+                  if (mounted) {
+                    await _loadChannels();
+                    if (mounted) await _refreshFeed(silent: true);
+                  }
+                },
                 onMore: () => showVideoOptionsSheet(
                   context,
                   v,

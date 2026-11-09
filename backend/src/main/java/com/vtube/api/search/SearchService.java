@@ -40,6 +40,14 @@ public class SearchService {
     public record Filters(String type, String uploadDate, String duration, String sort) {
     }
 
+    public static String unaccent(String s) {
+        if (s == null) return "";
+        String nfd = java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD);
+        return nfd.replaceAll("\\p{InCombiningDiacriticalMarks}+", "")
+                .replace('đ', 'd').replace('Đ', 'D')
+                .toLowerCase();
+    }
+
     public SearchResult search(Long uid, String q, Filters f, Paging paging) {
         String keyword = q == null ? "" : q.trim();
         String like = "%" + keyword + "%";
@@ -54,7 +62,7 @@ public class SearchService {
         boolean more = false;
         switch (type) {
             case "channel" -> {
-                List<ChannelDto> rows = findChannels(uid, like, paging.limitPlusOne(), paging.offset());
+                List<ChannelDto> rows = findChannels(uid, keyword, paging.limitPlusOne(), paging.offset());
                 more = rows.size() > paging.size();
                 chs = more ? rows.subList(0, paging.size()) : rows;
             }
@@ -64,29 +72,34 @@ public class SearchService {
                 pls = more ? rows.subList(0, paging.size()) : rows;
             }
             case "short" -> {
-                List<VideoDto> rows = findVideos(uid, like, true, f, paging.limitPlusOne(), paging.offset());
+                List<VideoDto> rows = findVideos(uid, keyword, true, f, paging.limitPlusOne(), paging.offset());
                 more = rows.size() > paging.size();
                 shorts = more ? rows.subList(0, paging.size()) : rows;
             }
             default -> {
-                List<VideoDto> rows = findVideos(uid, like, false, f, paging.limitPlusOne(), paging.offset());
+                List<VideoDto> rows = findVideos(uid, keyword, false, f, paging.limitPlusOne(), paging.offset());
                 more = rows.size() > paging.size();
                 vids = more ? rows.subList(0, paging.size()) : rows;
                 if ("all".equals(type) && paging.page() == 0) {
-                    chs = findChannels(uid, like, 3, 0);
-                    shorts = findVideos(uid, like, true, f, 10, 0);
+                    chs = findChannels(uid, keyword, 3, 0);
+                    shorts = findVideos(uid, keyword, true, f, 10, 0);
                 }
             }
         }
         return new SearchResult(chs, vids, shorts, pls, paging.page(), more);
     }
 
-    private List<VideoDto> findVideos(Long uid, String like, boolean isShort, Filters f, int limit, int offset) {
+    private List<VideoDto> findVideos(Long uid, String keyword, boolean isShort, Filters f, int limit, int offset) {
+        String like = "%" + keyword + "%";
+        String noSpaceLike = "%" + keyword.replaceAll("\\s+", "") + "%";
+        String unaccentedKeyword = unaccent(keyword);
+
         StringBuilder where = new StringBuilder("""
                  WHERE v.visibility = 'public' AND v.is_short = :short
-                   AND (v.title LIKE :like OR v.description LIKE :like OR v.tags LIKE :like OR c.name LIKE :like)\s""");
+                   AND (v.title LIKE :like OR v.description LIKE :like OR v.tags LIKE :like OR c.name LIKE :like OR c.handle LIKE :noSpaceLike)\s""");
         MapSqlParameterSource p = Db.params().addValue("uid", uid).addValue("like", like)
-                .addValue("short", isShort ? 1 : 0).addValue("limit", limit).addValue("offset", offset);
+                .addValue("noSpaceLike", noSpaceLike)
+                .addValue("short", isShort ? 1 : 0);
         String since = switch (f.uploadDate() == null ? "" : f.uploadDate()) {
             case "today" -> Times.daysAgo(1);
             case "week" -> Times.daysAgo(7);
@@ -114,18 +127,87 @@ public class SearchService {
             case "rating" -> "v.like_count DESC";
             default -> "(v.title LIKE :like) DESC, v.view_count DESC";
         };
-        return db.jdbc().query(VideoSql.SELECT + where + " ORDER BY " + order + " LIMIT :limit OFFSET :offset",
-                p, VideoSql.MAPPER);
+
+        List<VideoDto> list = new ArrayList<>(db.jdbc().query(VideoSql.SELECT + where + " ORDER BY " + order, p, VideoSql.MAPPER));
+        if (!unaccentedKeyword.isEmpty()) {
+            StringBuilder extraWhere = new StringBuilder("""
+                     WHERE v.visibility = 'public' AND v.is_short = :short\s""");
+            MapSqlParameterSource extraP = Db.params()
+                    .addValue("uid", uid)
+                    .addValue("like", like)
+                    .addValue("short", isShort ? 1 : 0);
+            if (since != null) {
+                extraWhere.append(" AND v.published_at >= :since ");
+                extraP.addValue("since", since);
+            }
+            if (f.duration() != null) {
+                switch (f.duration()) {
+                    case "short" -> extraWhere.append(" AND v.duration_seconds < 240 ");
+                    case "medium" -> extraWhere.append(" AND v.duration_seconds BETWEEN 240 AND 1200 ");
+                    case "long" -> extraWhere.append(" AND v.duration_seconds > 1200 ");
+                }
+            }
+            if (uid != null && "unwatched".equals(f.type())) {
+                extraWhere.append(" AND v.id NOT IN (SELECT video_id FROM watch_history WHERE user_id = :uid) ");
+            }
+            String extraOrder = switch (f.sort() == null ? "relevance" : f.sort()) {
+                case "date" -> "v.published_at DESC";
+                case "views" -> "v.view_count DESC";
+                case "rating" -> "v.like_count DESC";
+                default -> "v.view_count DESC";
+            };
+            List<VideoDto> allCandidates = db.jdbc().query(VideoSql.SELECT + extraWhere + " ORDER BY " + extraOrder, extraP, VideoSql.MAPPER);
+            Set<Long> existingIds = new java.util.HashSet<>();
+            for (VideoDto v : list) existingIds.add(v.id());
+            for (VideoDto v : allCandidates) {
+                if (!existingIds.contains(v.id())) {
+                    if (unaccent(v.title()).contains(unaccentedKeyword)
+                            || (v.channel() != null && unaccent(v.channel().name()).contains(unaccentedKeyword))
+                            || (v.channel() != null && unaccent(v.channel().handle()).contains(unaccentedKeyword))) {
+                        list.add(v);
+                        existingIds.add(v.id());
+                    }
+                }
+            }
+        }
+
+        int from = Math.min(offset, list.size());
+        int to = Math.min(from + limit, list.size());
+        return list.subList(from, to);
     }
 
-    private List<ChannelDto> findChannels(Long uid, String like, int limit, int offset) {
-        List<Long> ids = db.jdbc().query("""
-                        SELECT id FROM channels WHERE name LIKE :like OR handle LIKE :like
-                        ORDER BY subscriber_count DESC LIMIT :limit OFFSET :offset""",
-                Db.params().addValue("like", like).addValue("limit", limit).addValue("offset", offset),
-                (rs, i) -> rs.getLong(1));
+    private List<ChannelDto> findChannels(Long uid, String keyword, int limit, int offset) {
+        String unaccentedKeyword = unaccent(keyword);
+        String unaccentedNoSpace = unaccentedKeyword.replaceAll("\\s+", "");
+
+        List<Object[]> rows = db.jdbc().query("""
+                        SELECT id, name, handle FROM channels
+                        ORDER BY subscriber_count DESC""",
+                (rs, i) -> new Object[]{rs.getLong(1), rs.getString(2), rs.getString(3)});
+
+        List<Long> matchedIds = new ArrayList<>();
+        for (Object[] row : rows) {
+            Long id = (Long) row[0];
+            String name = row[1] == null ? "" : (String) row[1];
+            String handle = row[2] == null ? "" : (String) row[2];
+
+            boolean match = name.toLowerCase().contains(keyword.toLowerCase())
+                    || handle.toLowerCase().contains(keyword.toLowerCase())
+                    || handle.toLowerCase().contains(keyword.replaceAll("\\s+", "").toLowerCase())
+                    || unaccent(name).contains(unaccentedKeyword)
+                    || unaccent(handle).contains(unaccentedNoSpace);
+
+            if (match) {
+                matchedIds.add(id);
+            }
+        }
+
+        int from = Math.min(offset, matchedIds.size());
+        int to = Math.min(from + limit, matchedIds.size());
+        List<Long> pagedIds = matchedIds.subList(from, to);
+
         List<ChannelDto> out = new ArrayList<>();
-        for (Long id : ids) {
+        for (Long id : pagedIds) {
             out.add(channels.get(uid, id));
         }
         return out;
@@ -137,28 +219,60 @@ public class SearchService {
 
     public Suggestions suggestions(Long uid, String q) {
         String keyword = q == null ? "" : q.trim();
+        String unaccentedKeyword = unaccent(keyword);
+        String noSpace = keyword.replaceAll("\\s+", "").toLowerCase();
+
         List<String> history = uid == null ? List.of() : db.jdbc().query("""
-                        SELECT keyword FROM search_history WHERE user_id = :uid AND keyword LIKE :like
-                        ORDER BY searched_at DESC LIMIT :limit""",
-                Db.params().addValue("uid", uid).addValue("like", "%" + keyword + "%")
-                        .addValue("limit", keyword.isEmpty() ? 10 : 3),
+                        SELECT keyword FROM search_history WHERE user_id = :uid
+                        ORDER BY searched_at DESC LIMIT 20""",
+                Db.params().addValue("uid", uid),
                 (rs, i) -> rs.getString(1));
-        if (keyword.isEmpty()) {
-            return new Suggestions(history, List.of());
-        }
-        List<String> titles = db.jdbc().query("""
-                        SELECT v.title FROM videos v JOIN channels c ON c.id = v.channel_id
-                        WHERE v.visibility = 'public' AND (v.title LIKE :like OR c.name LIKE :like)
-                        ORDER BY (v.title LIKE :prefix) DESC, v.view_count DESC LIMIT 10""",
-                Db.params().addValue("like", "%" + keyword + "%").addValue("prefix", keyword + "%"),
-                (rs, i) -> rs.getString(1));
-        Set<String> set = new LinkedHashSet<>();
-        for (String t : titles) {
-            if (!history.contains(t)) {
-                set.add(t);
+
+        List<String> matchedHistory = new ArrayList<>();
+        if (!keyword.isEmpty()) {
+            for (String h : history) {
+                if (h.toLowerCase().contains(keyword.toLowerCase()) || unaccent(h).contains(unaccentedKeyword)) {
+                    matchedHistory.add(h);
+                    if (matchedHistory.size() >= 3) break;
+                }
             }
+        } else {
+            matchedHistory = history.stream().limit(10).toList();
         }
-        return new Suggestions(history, new ArrayList<>(set));
+
+        if (keyword.isEmpty()) {
+            return new Suggestions(matchedHistory, List.of());
+        }
+
+        List<Object[]> candidates = db.jdbc().query("""
+                        SELECT v.title, c.name, c.handle FROM videos v JOIN channels c ON c.id = v.channel_id
+                        WHERE v.visibility = 'public'
+                        ORDER BY v.view_count DESC LIMIT 100""",
+                (rs, i) -> new Object[]{rs.getString(1), rs.getString(2), rs.getString(3)});
+
+        Set<String> set = new LinkedHashSet<>();
+        for (Object[] row : candidates) {
+            String title = (String) row[0];
+            String channelName = (String) row[1];
+            String handle = (String) row[2];
+
+            if (channelName != null && (channelName.toLowerCase().contains(keyword.toLowerCase())
+                    || unaccent(channelName).contains(unaccentedKeyword)
+                    || (handle != null && handle.toLowerCase().contains(noSpace)))) {
+                if (!matchedHistory.contains(channelName)) {
+                    set.add(channelName);
+                }
+            }
+            if (title != null && (title.toLowerCase().contains(keyword.toLowerCase())
+                    || unaccent(title).contains(unaccentedKeyword))) {
+                if (!matchedHistory.contains(title)) {
+                    set.add(title);
+                }
+            }
+            if (set.size() >= 10) break;
+        }
+
+        return new Suggestions(matchedHistory, new ArrayList<>(set));
     }
 
     public record HistoryEntry(String keyword, String searchedAt) {

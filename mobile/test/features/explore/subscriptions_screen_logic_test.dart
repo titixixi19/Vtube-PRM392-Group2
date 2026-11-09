@@ -2,9 +2,21 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:vtube/app/main_shell.dart';
 import 'package:vtube/app/routes.dart';
+import 'package:vtube/app/theme.dart';
+import 'package:vtube/core/auth/auth_provider.dart';
+import 'package:vtube/core/network/api_client.dart';
 import 'package:vtube/core/network/api_exception.dart';
+import 'package:vtube/core/storage/token_storage.dart';
 import 'package:vtube/data/models/models.dart';
+import 'package:vtube/data/services/channel_service.dart';
+import 'package:vtube/data/services/notification_service.dart';
+import 'package:vtube/data/services/playlist_service.dart';
+import 'package:vtube/data/services/video_service.dart';
+import 'package:vtube/features/explore/subscriptions_screen.dart';
 
 import 'subscriptions_test_helpers.dart';
 
@@ -386,6 +398,58 @@ void main() {
 
       // Sau khi quay lại: kênh 1 không còn trong _channels, channelId tự động reset về null và feed không bị lọc theo kênh 1
       expect(channelService.lastFeedChannelId, isNull);
+    });
+
+    testWidgets('Quay lại tab Kênh đăng ký (SubscriptionsTabScope): tự động tải lại danh sách kênh và feed', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final tokens = TokenStorage();
+      final authService = FakeAuthService();
+      final authProvider = AuthProvider(authService, tokens, ApiClient(tokens));
+      tokens.save('fake_token');
+      authProvider.login('demo@vtube.vn', '123456');
+
+      final activeNotifier = ValueNotifier<bool>(true);
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
+            Provider<ChannelService>.value(value: channelService),
+            Provider<NotificationService>.value(value: FakeNotificationService()),
+            Provider<PlaylistService>.value(value: FakePlaylistService()),
+            Provider<VideoService>.value(value: FakeVideoService()),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.dark(),
+            home: ValueListenableBuilder<bool>(
+              valueListenable: activeNotifier,
+              builder: (context, isActive, _) {
+                return SubscriptionsTabScope(
+                  isActive: isActive,
+                  child: const SubscriptionsScreen(),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(channelService.mySubscriptionsCalls, 1);
+      expect(channelService.subscriptionFeedCalls, 1);
+
+      // Chuyển sang tab khác (isActive = false)
+      activeNotifier.value = false;
+      await tester.pumpAndSettle();
+      expect(channelService.mySubscriptionsCalls, 1);
+
+      // Quay lại tab Kênh đăng ký (isActive = true)
+      activeNotifier.value = true;
+      await tester.pumpAndSettle();
+
+      // Đã tự động gọi lại mySubscriptions và subscriptionFeed lần 2
+      expect(channelService.mySubscriptionsCalls, 2);
+      expect(channelService.subscriptionFeedCalls, 2);
     });
   });
 }
