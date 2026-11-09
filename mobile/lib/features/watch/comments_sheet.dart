@@ -229,6 +229,22 @@ class _CommentsSheetContentState extends State<CommentsSheetContent> {
     }
   }
 
+  /// Trạng thái trống / lỗi / đang tải nằm giữa vùng danh sách nhưng vẫn cuộn được.
+  /// Khi bàn phím mở, vùng này co lại rất thấp; dùng Center thường sẽ bị
+  /// "BOTTOM OVERFLOWED". Gắn scrollController của sheet để vẫn kéo sheet được.
+  Widget _scrollableState(ScrollController controller, Widget child) {
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        controller: controller,
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: Center(child: child),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
@@ -313,12 +329,16 @@ class _CommentsSheetContentState extends State<CommentsSheetContent> {
               // Danh sách bình luận
               Expanded(
                 child: _loading && _comments.isEmpty
-                    ? const Center(child: LoadingView())
+                    ? _scrollableState(scrollController, const LoadingView())
                     : _error != null && _comments.isEmpty
-                        ? Center(child: ErrorView(message: _error!, onRetry: () => _loadComments(initial: true)))
+                        ? _scrollableState(
+                            scrollController,
+                            ErrorView(message: _error!, onRetry: () => _loadComments(initial: true)),
+                          )
                         : _comments.isEmpty
-                            ? const Center(
-                                child: EmptyView(
+                            ? _scrollableState(
+                                scrollController,
+                                const EmptyView(
                                   icon: Icons.chat_bubble_outline,
                                   title: 'Chưa có bình luận nào',
                                   message: 'Hãy là người đầu tiên bình luận!',
