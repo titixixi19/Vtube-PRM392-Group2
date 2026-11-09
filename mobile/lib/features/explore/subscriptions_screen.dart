@@ -58,6 +58,7 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
   int _feedReqId = 0;
 
   bool? _lastLoggedIn;
+  int? _lastBranchIndex;
 
   @override
   void initState() {
@@ -68,6 +69,19 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final shell = StatefulNavigationShell.maybeOf(context);
+    final currentBranch = shell?.currentIndex;
+    if (currentBranch != null && currentBranch != _lastBranchIndex) {
+      final wasOtherBranch = _lastBranchIndex != null && _lastBranchIndex != 2;
+      _lastBranchIndex = currentBranch;
+      if (currentBranch == 2 && wasOtherBranch) {
+        final isLoggedIn = context.read<AuthProvider>().isLoggedIn;
+        if (isLoggedIn) {
+          _loadChannels();
+          _refreshFeed(silent: true);
+        }
+      }
+    }
     final isLoggedIn = context.watch<AuthProvider>().isLoggedIn;
     if (_lastLoggedIn != isLoggedIn) {
       _lastLoggedIn = isLoggedIn;
@@ -269,11 +283,33 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
     }
 
     if (!_loadingChannels && _channels.isEmpty) {
-      return EmptyView(
-        icon: Icons.subscriptions_outlined,
-        title: 'Hãy đăng ký kênh để xem video mới nhất tại đây',
-        actionLabel: 'Khám phá kênh',
-        onAction: () => context.go(AppRoutes.home),
+      return RefreshIndicator(
+        onRefresh: () async {
+          await _loadChannels();
+          await _refreshFeed(silent: true);
+        },
+        color: AppColors.accent,
+        backgroundColor: AppColors.surfaceContainer,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(
+              height: MediaQuery.of(context).size.height * 0.7,
+              child: EmptyView(
+                icon: Icons.subscriptions_outlined,
+                title: 'Hãy đăng ký kênh để xem video mới nhất tại đây',
+                actionLabel: 'Khám phá kênh',
+                onAction: () async {
+                  await context.push(AppRoutes.home);
+                  if (mounted) {
+                    await _loadChannels();
+                    if (mounted) await _refreshFeed(silent: true);
+                  }
+                },
+              ),
+            ),
+          ],
+        ),
       );
     }
 
@@ -294,8 +330,15 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
             selectedChannelId: _selectedChannelId,
             onChannelSelected: _onChannelSelected,
             onAllPressed: _openAllSubscriptions,
-            onViewChannelPressed:
-                _selectedChannelId != null ? () => context.push(AppRoutes.channel(_selectedChannelId!)) : null,
+            onViewChannelPressed: _selectedChannelId != null
+                ? () async {
+                    await context.push(AppRoutes.channel(_selectedChannelId!));
+                    if (mounted) {
+                      await _loadChannels();
+                      if (mounted) await _refreshFeed(silent: true);
+                    }
+                  }
+                : null,
           ),
 
           // 2. ChipBar chọn loại nội dung
@@ -335,7 +378,13 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                 key: Key('video_card_large_${v.id}'),
                 video: v,
                 onTap: () => v.isShort ? context.push(AppRoutes.shortsAt(v.id)) : context.push(AppRoutes.video(v.id)),
-                onChannelTap: () => context.push(AppRoutes.channel(v.channel.id)),
+                onChannelTap: () async {
+                  await context.push(AppRoutes.channel(v.channel.id));
+                  if (mounted) {
+                    await _loadChannels();
+                    if (mounted) await _refreshFeed(silent: true);
+                  }
+                },
                 onMore: () => showVideoOptionsSheet(
                   context,
                   v,
