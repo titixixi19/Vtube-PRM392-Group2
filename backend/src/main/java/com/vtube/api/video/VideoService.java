@@ -61,6 +61,11 @@ public class VideoService {
                         + " ORDER BY v.published_at DESC LIMIT :limit OFFSET :offset",
                 Db.params().addValue("uid", uid).addValue("limit", paging.limitPlusOne()).addValue("offset", paging.offset()),
                 VideoSql.MAPPER);
+        // Màn Shorts không gọi API chi tiết cho từng short, nên trả kèm trạng thái người xem
+        // để nút Like / Đăng ký hiện đúng ngay từ đầu.
+        if (uid != null) {
+            rows = rows.stream().map(v -> withViewer(uid, v)).toList();
+        }
         return PageResult.of(rows, paging);
     }
 
@@ -70,6 +75,12 @@ public class VideoService {
         if (uid == null) {
             return v;
         }
+        return withViewer(uid, v);
+    }
+
+    /** Gắn ViewerState (reaction, đăng ký kênh, tiến độ, xem sau, chủ kênh) của uid vào video. */
+    private VideoDto withViewer(long uid, VideoDto v) {
+        long id = v.id();
         MapSqlParameterSource p = Db.params().addValue("uid", uid).addValue("vid", id).addValue("ch", v.channel().id());
         List<Integer> reaction = db.jdbc().query(
                 "SELECT value FROM video_reactions WHERE user_id = :uid AND video_id = :vid", p, (rs, i) -> rs.getInt(1));
