@@ -484,11 +484,28 @@ Widget createTestApp({
   required FakeVideoService videoService,
   required FakeUploadService uploadService,
   required FakeAuthService authService,
+  // true: '/' là một màn "Trang chủ" giả có nút mở [child] bằng push('/upload'),
+  // để kiểm tra lịch sử điều hướng (Back) sau khi rời [child].
+  bool openFromHome = false,
 }) {
   final router = GoRouter(
     initialLocation: '/',
     routes: [
-      GoRoute(path: '/', builder: (_, __) => child),
+      if (openFromHome) ...[
+        GoRoute(
+          path: '/',
+          builder: (context, __) => Scaffold(
+            body: Center(
+              child: ElevatedButton(
+                onPressed: () => context.push('/upload'),
+                child: const Text('Trang chủ giả'),
+              ),
+            ),
+          ),
+        ),
+        GoRoute(path: '/upload', builder: (_, __) => child),
+      ] else
+        GoRoute(path: '/', builder: (_, __) => child),
       GoRoute(path: '/watch', builder: (_, __) => const Scaffold(body: Text('Watch Screen'))),
       GoRoute(path: '/video/:id', builder: (_, __) => const Scaffold(body: Text('Video Screen'))),
       GoRoute(path: '/channel/:id', builder: (_, __) => const Scaffold(body: Text('Channel Screen'))),
