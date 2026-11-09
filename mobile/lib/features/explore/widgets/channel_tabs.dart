@@ -114,7 +114,7 @@ class _ChannelHomeTabState extends State<ChannelHomeTab> with AutomaticKeepAlive
         if (_shorts.isNotEmpty) ...[
           ShortsShelf(
             shorts: _shorts,
-            onTap: (s) => context.push(AppRoutes.shortsAt(s.id)),
+            onTap: (s) => context.go(AppRoutes.shortsAt(s.id)),
           ),
           const SizedBox(height: 8),
         ],
@@ -446,7 +446,7 @@ class _ChannelShortsTabState extends State<ChannelShortsTab> with AutomaticKeepA
 
           final s = _shorts[index];
           return GestureDetector(
-            onTap: () => context.push(AppRoutes.shortsAt(s.id)),
+            onTap: () => context.go(AppRoutes.shortsAt(s.id)),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Stack(

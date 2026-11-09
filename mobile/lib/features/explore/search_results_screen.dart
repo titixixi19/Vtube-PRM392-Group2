@@ -435,7 +435,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
         items.add(ShortsShelf(
           key: const Key('search_shorts_shelf'),
           shorts: _shorts,
-          onTap: (s) => context.push(AppRoutes.shortsAt(s.id)),
+          onTap: (s) => context.go(AppRoutes.shortsAt(s.id)),
         ));
         shortsInserted = true;
       }
@@ -457,7 +457,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
       items.add(ShortsShelf(
         key: const Key('search_shorts_shelf'),
         shorts: _shorts,
-        onTap: (s) => context.push(AppRoutes.shortsAt(s.id)),
+        onTap: (s) => context.go(AppRoutes.shortsAt(s.id)),
       ));
     }
 
@@ -482,7 +482,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
           final s = _shorts[i];
           return GestureDetector(
             key: Key('short_grid_item_${s.id}'),
-            onTap: () => context.push(AppRoutes.shortsAt(s.id)),
+            onTap: () => context.go(AppRoutes.shortsAt(s.id)),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: Stack(

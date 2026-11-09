@@ -326,7 +326,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   void _openItem(HistoryItem item) {
     if (item.video.isShort) {
-      context.push(AppRoutes.shortsAt(item.video.id));
+      context.go(AppRoutes.shortsAt(item.video.id));
     } else {
       context.push(AppRoutes.video(item.video.id));
     }
