@@ -20,7 +20,16 @@ import '../../data/services/upload_service.dart';
 import '../../data/services/video_service.dart';
 import 'widgets/upload_setting_sheets.dart';
 
-typedef ExtractThumbnail = Future<String?> Function(String videoPath);
+typedef ExtractThumbnail = Future<String?> Function(String videoPath, {int timeMs});
+
+Future<String?> _defaultExtractThumbnail(String videoPath, {int timeMs = 1000}) async {
+  return VideoThumbnail.thumbnailFile(
+    video: videoPath,
+    imageFormat: ImageFormat.JPEG,
+    timeMs: timeMs,
+    quality: 80,
+  );
+}
 
 /// MÀN 15 · TẢI VIDEO LÊN · Người 4
 /// Luồng: chọn video (image_picker: pickVideo) -> UploadService.upload(path, type: 'video', onProgress:)
@@ -75,12 +84,30 @@ class _UploadScreenState extends State<UploadScreen> {
   String? _uploadedThumbnailUrl;
 
   bool get _isCreatingRecord => _uploading && _uploadProgress >= 0.95;
+  bool? _lastLoggedIn;
 
   @override
   void initState() {
     super.initState();
     _isShort = widget.isShort;
     _titleController.addListener(() => setState(() {}));
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final loggedIn = context.watch<AuthProvider>().isLoggedIn;
+    if (_lastLoggedIn != loggedIn) {
+      _lastLoggedIn = loggedIn;
+      if (loggedIn) {
+        _loadAuxiliaryData();
+      } else {
+        setState(() {
+          _myPlaylists = [];
+          _selectedPlaylistIds.clear();
+        });
+      }
+    }
   }
 
   @override
@@ -138,29 +165,8 @@ class _UploadScreenState extends State<UploadScreen> {
       });
       _loadAuxiliaryData();
 
-      if (!_hasCustomThumbnail) {
-        String? thumbPath;
-        try {
-          if (widget.extractThumbnail != null) {
-            thumbPath = await widget.extractThumbnail!(picked.path);
-          } else if (!Platform.environment.containsKey('FLUTTER_TEST')) {
-            thumbPath = await VideoThumbnail.thumbnailFile(
-              video: picked.path,
-              imageFormat: ImageFormat.JPEG,
-              timeMs: 0,
-              quality: 80,
-            );
-          }
-        } catch (_) {}
-
-        if (thumbPath != null && !_hasCustomThumbnail && mounted) {
-          setState(() {
-            _thumbnailFile = XFile(thumbPath!);
-          });
-        }
-      }
-
       VideoPlayerController? controller;
+      int durationMs = 0;
       try {
         controller = VideoPlayerController.file(File(picked.path));
         await controller.initialize();
@@ -173,6 +179,7 @@ class _UploadScreenState extends State<UploadScreen> {
           _videoController = controller;
           _durationSeconds = controller!.value.duration.inSeconds;
         });
+        durationMs = controller.value.duration.inMilliseconds;
 
         // Tự động gợi ý Short nếu video ngắn <= 60s và có tỉ lệ dọc (có tính rotationCorrection)
         final rot = controller.value.rotationCorrection;
@@ -192,6 +199,26 @@ class _UploadScreenState extends State<UploadScreen> {
             _durationSeconds = 0;
           });
           showSnack(context, 'Không thể phát video đã chọn');
+        }
+      }
+
+      if (!_hasCustomThumbnail) {
+        String? thumbPath;
+        try {
+          // Tính toán offset khung hình an toàn không bằng 0
+          int targetTimeMs = 1000;
+          if (durationMs > 0 && durationMs < 1000) {
+            targetTimeMs = (durationMs ~/ 2).clamp(1, durationMs);
+          }
+
+          final extractor = widget.extractThumbnail ?? _defaultExtractThumbnail;
+          thumbPath = await extractor(picked.path, timeMs: targetTimeMs);
+        } catch (_) {}
+
+        if (thumbPath != null && !_hasCustomThumbnail && mounted) {
+          setState(() {
+            _thumbnailFile = XFile(thumbPath!);
+          });
         }
       }
     } catch (e) {
@@ -636,6 +663,12 @@ class _UploadScreenState extends State<UploadScreen> {
               title: 'Danh sách phát',
               value: _selectedPlaylistIds.isEmpty ? 'Không có' : '${_selectedPlaylistIds.length} danh sách',
               onTap: () async {
+                if (!await requireLogin(context)) return;
+                if (!mounted) return;
+                if (_myPlaylists.isEmpty) {
+                  await _loadAuxiliaryData();
+                  if (!mounted) return;
+                }
                 final selected = await showUploadPlaylistsSheet(context, _myPlaylists, _selectedPlaylistIds);
                 if (selected != null) {
                   setState(() {

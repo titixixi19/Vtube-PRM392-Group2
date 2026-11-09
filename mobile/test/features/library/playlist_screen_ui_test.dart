@@ -74,6 +74,29 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Danh sách phát này là riêng tư'), findsOneWidget);
+      expect(find.text('Yêu cầu đăng nhập'), findsNothing);
+    });
+
+    testWidgets('Displays 401 unauthorized login state when unauthenticated instead of private', (tester) async {
+      fakePlaylistService.returnUnauthorized = true;
+
+      await tester.pumpWidget(
+        createTestApp(
+          child: const PlaylistScreen(playlistId: 100),
+          auth: authProvider,
+          notificationService: fakeNotifService,
+          historyService: fakeHistoryService,
+          playlistService: fakePlaylistService,
+          videoService: fakeVideoService,
+          uploadService: fakeUploadService,
+          authService: fakeAuthService,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Yêu cầu đăng nhập'), findsOneWidget);
+      expect(find.text('Đăng nhập'), findsOneWidget);
+      expect(find.text('Danh sách phát này là riêng tư'), findsNothing);
     });
 
     testWidgets('Reactive header updates video count dynamically', (tester) async {

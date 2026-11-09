@@ -76,14 +76,18 @@ void main() {
       tempDir.deleteSync(recursive: true);
     });
 
-    testWidgets('First-frame default thumbnail is extracted and sent to create when custom thumbnail is not provided', (tester) async {
+    testWidgets('First-frame default thumbnail is extracted at non-zero offset and sent to create when custom thumbnail is not provided', (tester) async {
       await authProvider.login('test@vtube.com', '123456');
 
+      int? capturedTimeMs;
       await tester.pumpWidget(
         createTestApp(
           child: UploadScreen(
             pickVideo: (source) async => XFile('test/assets/test.mp4'),
-            extractThumbnail: (videoPath) async => 'test/assets/generated_first_frame.jpg',
+            extractThumbnail: (videoPath, {int timeMs = 1000}) async {
+              capturedTimeMs = timeMs;
+              return 'test/assets/generated_first_frame.jpg';
+            },
           ),
           auth: authProvider,
           notificationService: fakeNotifService,
@@ -99,6 +103,10 @@ void main() {
       // Bấm chọn từ thư viện
       await tester.tap(find.text('Chọn từ thư viện'));
       await tester.pumpAndSettle();
+
+      // Frame trích xuất không phải timeMs: 0
+      expect(capturedTimeMs, isNotNull);
+      expect(capturedTimeMs, greaterThan(0));
 
       // Nhập tiêu đề
       await tester.enterText(find.byType(TextField).first, 'Video Test First Frame');
@@ -126,7 +134,7 @@ void main() {
           child: UploadScreen(
             pickVideo: (source) async => XFile('test/assets/test.mp4'),
             pickImage: (source) async => XFile('test/assets/custom_thumbnail.jpg'),
-            extractThumbnail: (videoPath) async => 'test/assets/generated_first_frame.jpg',
+            extractThumbnail: (videoPath, {int timeMs = 1000}) async => 'test/assets/generated_first_frame.jpg',
           ),
           auth: authProvider,
           notificationService: fakeNotifService,
@@ -404,6 +412,50 @@ void main() {
 
       expect(fakeVideoService.createCalls, 1);
       expect(find.text('Video đã được tải lên'), findsOneWidget);
+    });
+
+    testWidgets('Guest logging in recovers playlist list for upload selector', (tester) async {
+      // Bắt đầu ở trạng thái khách chưa đăng nhập
+      expect(authProvider.isLoggedIn, isFalse);
+
+      await tester.pumpWidget(
+        createTestApp(
+          child: UploadScreen(
+            pickVideo: (source) async => XFile('test/assets/test.mp4'),
+            extractThumbnail: (videoPath, {int timeMs = 1000}) async => 'test/assets/thumb.jpg',
+          ),
+          auth: authProvider,
+          notificationService: fakeNotifService,
+          historyService: fakeHistoryService,
+          playlistService: fakePlaylistService,
+          videoService: fakeVideoService,
+          uploadService: fakeUploadService,
+          authService: fakeAuthService,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Chọn video để sang màn Form
+      await tester.tap(find.text('Chọn từ thư viện'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Danh sách phát'), findsOneWidget);
+
+      // Đăng nhập
+      await authProvider.login('test@vtube.com', '123456');
+      await tester.pumpAndSettle();
+
+      // Cuộn tới Danh sách phát và mở sheet
+      await tester.scrollUntilVisible(
+        find.text('Danh sách phát'),
+        100,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.text('Danh sách phát'));
+      await tester.pumpAndSettle();
+
+      // Đã nạp danh sách phát của tài khoản
+      expect(find.text('Flutter Toàn Tập'), findsOneWidget);
     });
   });
 }

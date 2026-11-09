@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../app/routes.dart';
 import '../../app/theme.dart';
+import '../../core/auth/auth_provider.dart';
 import '../../core/auth/require_login.dart';
 import '../../core/config/api_config.dart';
 import '../../core/network/api_exception.dart';
@@ -38,8 +39,10 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
   bool _loading = true;
   String? _error;
   bool _isForbidden = false;
+  bool _isUnauthorized = false;
   int _requestId = 0;
   ScaffoldMessengerState? _scaffoldMessenger;
+  bool? _lastLoggedIn;
   final _pendingRemoves = <int, Future<void> Function({bool rollback})>{};
 
   @override
@@ -52,6 +55,13 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _scaffoldMessenger = ScaffoldMessenger.maybeOf(context);
+    final loggedIn = context.watch<AuthProvider>().isLoggedIn;
+    if (_lastLoggedIn != loggedIn) {
+      _lastLoggedIn = loggedIn;
+      if (_isUnauthorized || _isForbidden) {
+        _loadDetail();
+      }
+    }
   }
 
   @override
@@ -78,6 +88,7 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
       _loading = true;
       _error = null;
       _isForbidden = false;
+      _isUnauthorized = false;
     });
 
     try {
@@ -90,9 +101,14 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
       });
     } catch (e) {
       if (!mounted || reqId != _requestId) return;
-      if (e is ApiException && (e.statusCode == 403 || e.isUnauthorized)) {
+      if (e is ApiException && e.statusCode == 403) {
         setState(() {
           _isForbidden = true;
+          _loading = false;
+        });
+      } else if (e is ApiException && e.isUnauthorized) {
+        setState(() {
+          _isUnauthorized = true;
           _loading = false;
         });
       } else {
@@ -343,6 +359,23 @@ class _PlaylistScreenState extends State<PlaylistScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isUnauthorized) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Danh sách phát')),
+        body: EmptyView(
+          icon: Icons.lock_person_outlined,
+          title: 'Yêu cầu đăng nhập',
+          message: 'Phiên đăng nhập đã hết hạn hoặc bạn cần đăng nhập để xem danh sách phát này.',
+          actionLabel: 'Đăng nhập',
+          onAction: () async {
+            if (await requireLogin(context) && mounted) {
+              _loadDetail();
+            }
+          },
+        ),
+      );
+    }
+
     if (_isForbidden) {
       return Scaffold(
         appBar: AppBar(title: const Text('Danh sách phát')),
