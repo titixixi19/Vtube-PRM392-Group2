@@ -371,7 +371,7 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
               VideoCardLarge(
                 key: Key('video_card_large_${v.id}'),
                 video: v,
-                onTap: () => v.isShort ? context.push(AppRoutes.shortsAt(v.id)) : context.push(AppRoutes.video(v.id)),
+                onTap: () => v.isShort ? context.go(AppRoutes.shortsAt(v.id)) : context.push(AppRoutes.video(v.id)),
                 onChannelTap: () async {
                   await context.push(AppRoutes.channel(v.channel.id));
                   if (mounted) {

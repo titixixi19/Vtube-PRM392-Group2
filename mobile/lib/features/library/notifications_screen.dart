@@ -204,7 +204,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
 
     if (item.type == 'new_short' && item.videoId != null) {
-      context.push(AppRoutes.shortsAt(item.videoId!));
+      context.go(AppRoutes.shortsAt(item.videoId!));
     } else if (item.type == 'new_subscriber' && item.actor != null) {
       context.push(AppRoutes.channel(item.actor!.id));
     } else if (item.videoId != null) {
