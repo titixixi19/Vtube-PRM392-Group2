@@ -200,7 +200,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           );
         });
       }
-      unawaited(context.read<NotificationService>().markRead(item.id).catchError((_) {}));
+      unawaited(_markReadWithRollback(item));
     }
 
     if (item.type == 'new_short' && item.videoId != null) {
@@ -209,6 +209,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       context.push(AppRoutes.channel(item.actor!.id));
     } else if (item.videoId != null) {
       context.push(AppRoutes.video(item.videoId!));
+    }
+  }
+
+  Future<void> _markReadWithRollback(NotificationItem item) async {
+    try {
+      await context.read<NotificationService>().markRead(item.id);
+    } catch (e) {
+      if (!mounted) return;
+      final index = _items.indexWhere((e) => e.id == item.id);
+      if (index != -1) {
+        setState(() {
+          _items[index] = item;
+        });
+      }
+      showSnack(context, e is ApiException ? e.message : 'Không thể cập nhật trạng thái thông báo');
     }
   }
 

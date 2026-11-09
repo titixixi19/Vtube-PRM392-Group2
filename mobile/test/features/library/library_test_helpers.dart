@@ -143,6 +143,7 @@ class FakeNotificationService extends NotificationService {
 
   bool shouldFailList = false;
   bool shouldFailLoadMore = false;
+  bool shouldFailMarkRead = false;
   int markReadCalls = 0;
   int? lastMarkReadId;
 
@@ -165,6 +166,9 @@ class FakeNotificationService extends NotificationService {
   Future<void> markRead(int id) async {
     markReadCalls++;
     lastMarkReadId = id;
+    if (shouldFailMarkRead) {
+      throw const ApiException('Lỗi cập nhật trạng thái đã đọc');
+    }
     final index = items.indexWhere((e) => e.id == id);
     if (index != -1) {
       final old = items[index];
@@ -261,12 +265,16 @@ class FakePlaylistService extends PlaylistService {
   FakePlaylistService(super.api);
 
   bool returnForbidden = false;
+  bool returnUnauthorized = false;
   bool shouldFailRemove = false;
+  bool shouldFailAdd = false;
   int removeVideoCalls = 0;
   int? lastRemovedPlaylistId;
   int? lastRemovedVideoId;
   int addVideoCalls = 0;
   int reorderCalls = 0;
+  int mineCalls = 0;
+  Completer<Playlist>? addVideoCompleter;
   List<int>? lastReorderedVideoIds;
   String? lastUpdatedDescription;
 
@@ -279,6 +287,9 @@ class FakePlaylistService extends PlaylistService {
   Future<PlaylistDetail> detail(int id, {String sort = 'manual'}) async {
     if (returnForbidden) {
       throw const ApiException('Bạn không có quyền truy cập', statusCode: 403);
+    }
+    if (returnUnauthorized) {
+      throw const ApiException('Yêu cầu đăng nhập', statusCode: 401);
     }
 
     return PlaylistDetail(
@@ -311,6 +322,12 @@ class FakePlaylistService extends PlaylistService {
   @override
   Future<Playlist> addVideo(int id, int videoId) async {
     addVideoCalls++;
+    if (addVideoCompleter != null) {
+      return await addVideoCompleter!.future;
+    }
+    if (shouldFailAdd) {
+      throw const ApiException('Lỗi máy chủ khi thêm video');
+    }
     return createTestPlaylist(id: 100, title: 'Flutter Toàn Tập');
   }
 
@@ -333,22 +350,26 @@ class FakePlaylistService extends PlaylistService {
   }
 
   @override
-  Future<List<Playlist>> mine({int? videoId}) async => [
-        createTestPlaylist(
-          id: 100,
-          title: 'Flutter Toàn Tập',
-          visibility: 'public',
-          kind: 'custom',
-          videoCount: 2,
-        ),
-        createTestPlaylist(
-          id: 101,
-          title: 'Video đã thích',
-          visibility: 'private',
-          kind: 'liked',
-          videoCount: 5,
-        ),
-      ];
+  Future<List<Playlist>> mine({int? videoId}) async {
+    mineCalls++;
+    return [
+      createTestPlaylist(
+        id: 100,
+        title: 'Flutter Toàn Tập',
+        visibility: 'public',
+        kind: 'custom',
+        videoCount: 2,
+        containsVideo: videoId == 101,
+      ),
+      createTestPlaylist(
+        id: 101,
+        title: 'Video đã thích',
+        visibility: 'private',
+        kind: 'liked',
+        videoCount: 5,
+      ),
+    ];
+  }
 }
 
 class FakeVideoService extends VideoService {
@@ -469,6 +490,7 @@ Widget createTestApp({
     routes: [
       GoRoute(path: '/', builder: (_, __) => child),
       GoRoute(path: '/watch', builder: (_, __) => const Scaffold(body: Text('Watch Screen'))),
+      GoRoute(path: '/video/:id', builder: (_, __) => const Scaffold(body: Text('Video Screen'))),
       GoRoute(path: '/channel/:id', builder: (_, __) => const Scaffold(body: Text('Channel Screen'))),
       GoRoute(path: '/shorts', builder: (_, __) => const Scaffold(body: Text('Shorts Screen'))),
       GoRoute(path: '/shorts/:id', builder: (_, __) => const Scaffold(body: Text('Shorts Screen'))),

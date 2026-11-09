@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vtube/core/auth/auth_provider.dart';
 import 'package:vtube/core/network/api_client.dart';
 import 'package:vtube/core/storage/token_storage.dart';
+import 'package:vtube/data/models/models.dart';
 import 'package:vtube/features/library/playlist_screen.dart';
 import 'package:vtube/features/library/widgets/playlist_edit_dialog.dart';
 import 'package:vtube/shared/widgets/save_to_playlist_sheet.dart';
@@ -291,6 +294,86 @@ void main() {
       // Pending remove phải được hoàn tất trước khi reorder
       expect(fakePlaylistService.removeVideoCalls, 1);
       expect(fakePlaylistService.reorderCalls, 1);
+    });
+
+    testWidgets('Rapid taps in SaveToPlaylistSheet do not fire conflicting concurrent requests', (tester) async {
+      await authProvider.login('test@vtube.com', '123456');
+
+      final addCompleter = Completer<Playlist>();
+      fakePlaylistService.addVideoCompleter = addCompleter;
+
+      await tester.pumpWidget(
+        createTestApp(
+          child: const Scaffold(
+            body: SaveToPlaylistSheet(videoId: 999),
+          ),
+          auth: authProvider,
+          notificationService: fakeNotifService,
+          historyService: fakeHistoryService,
+          playlistService: fakePlaylistService,
+          videoService: fakeVideoService,
+          uploadService: fakeUploadService,
+          authService: fakeAuthService,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final checkbox = find.byType(CheckboxListTile).first;
+      expect(checkbox, findsOneWidget);
+
+      // Nhấn lần 1 -> gọi addVideo
+      await tester.tap(checkbox);
+      await tester.pump();
+
+      expect(fakePlaylistService.addVideoCalls, 1);
+
+      // Nhấn dồn dập lần 2 và 3 trong khi request đầu tiên đang pending
+      await tester.tap(checkbox);
+      await tester.pump();
+      await tester.tap(checkbox);
+      await tester.pump();
+
+      // Không gọi thêm addVideo hay removeVideo vì bị khoá (pending)
+      expect(fakePlaylistService.addVideoCalls, 1);
+      expect(fakePlaylistService.removeVideoCalls, 0);
+
+      // Request 1 hoàn tất
+      addCompleter.complete(createTestPlaylist(id: 100, title: 'Flutter Toàn Tập'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Đã thêm vào Flutter Toàn Tập'), findsOneWidget);
+    });
+
+    testWidgets('SaveToPlaylistSheet rolls back state on network failure', (tester) async {
+      await authProvider.login('test@vtube.com', '123456');
+
+      fakePlaylistService.shouldFailAdd = true;
+
+      await tester.pumpWidget(
+        createTestApp(
+          child: const Scaffold(
+            body: SaveToPlaylistSheet(videoId: 999),
+          ),
+          auth: authProvider,
+          notificationService: fakeNotifService,
+          historyService: fakeHistoryService,
+          playlistService: fakePlaylistService,
+          videoService: fakeVideoService,
+          uploadService: fakeUploadService,
+          authService: fakeAuthService,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final checkbox = find.byType(CheckboxListTile).first;
+      expect(tester.widget<CheckboxListTile>(checkbox).value, isFalse);
+
+      await tester.tap(checkbox);
+      await tester.pumpAndSettle();
+
+      // Thất bại -> rollback về unchecked và hiện lỗi
+      expect(tester.widget<CheckboxListTile>(checkbox).value, isFalse);
+      expect(find.text('Lỗi máy chủ khi thêm video'), findsOneWidget);
     });
   });
 }

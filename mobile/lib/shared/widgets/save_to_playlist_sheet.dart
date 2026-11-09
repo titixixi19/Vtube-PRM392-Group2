@@ -33,6 +33,7 @@ class _SaveToPlaylistSheetState extends State<SaveToPlaylistSheet> {
   List<Playlist> _playlists = [];
   bool _loading = true;
   String? _error;
+  final Set<int> _pendingPlaylistIds = <int>{};
 
   @override
   void initState() {
@@ -63,28 +64,36 @@ class _SaveToPlaylistSheetState extends State<SaveToPlaylistSheet> {
   }
 
   Future<void> _togglePlaylist(Playlist playlist, bool check) async {
+    if (_pendingPlaylistIds.contains(playlist.id)) return;
+
     final oldState = playlist.containsVideo == true;
     if (oldState == check) return;
 
     final index = _playlists.indexWhere((p) => p.id == playlist.id);
     if (index == -1) return;
 
+    final originalPlaylist = _playlists[index];
     final updated = Playlist(
-      id: playlist.id,
-      title: playlist.title,
-      description: playlist.description,
-      visibility: playlist.visibility,
-      kind: playlist.kind,
-      videoCount: check ? playlist.videoCount + 1 : (playlist.videoCount > 0 ? playlist.videoCount - 1 : 0),
-      thumbnailUrl: playlist.thumbnailUrl,
-      updatedAt: playlist.updatedAt,
-      ownerUserId: playlist.ownerUserId,
-      ownerName: playlist.ownerName,
-      ownerChannelId: playlist.ownerChannelId,
+      id: originalPlaylist.id,
+      title: originalPlaylist.title,
+      description: originalPlaylist.description,
+      visibility: originalPlaylist.visibility,
+      kind: originalPlaylist.kind,
+      videoCount: check
+          ? originalPlaylist.videoCount + 1
+          : (originalPlaylist.videoCount > 0 ? originalPlaylist.videoCount - 1 : 0),
+      thumbnailUrl: originalPlaylist.thumbnailUrl,
+      updatedAt: originalPlaylist.updatedAt,
+      ownerUserId: originalPlaylist.ownerUserId,
+      ownerName: originalPlaylist.ownerName,
+      ownerChannelId: originalPlaylist.ownerChannelId,
       containsVideo: check,
     );
 
-    setState(() => _playlists[index] = updated);
+    setState(() {
+      _pendingPlaylistIds.add(playlist.id);
+      _playlists[index] = updated;
+    });
 
     try {
       final service = context.read<PlaylistService>();
@@ -100,8 +109,15 @@ class _SaveToPlaylistSheetState extends State<SaveToPlaylistSheet> {
     } catch (e) {
       if (!mounted) return;
       // Khôi phục trạng thái cũ khi lỗi
-      setState(() => _playlists[index] = playlist);
+      final revertIndex = _playlists.indexWhere((p) => p.id == playlist.id);
+      if (revertIndex != -1) {
+        setState(() => _playlists[revertIndex] = originalPlaylist);
+      }
       showSnack(context, e is ApiException ? e.message : 'Thao tác không thành công');
+    } finally {
+      if (mounted) {
+        setState(() => _pendingPlaylistIds.remove(playlist.id));
+      }
     }
   }
 
@@ -313,11 +329,13 @@ class _SaveToPlaylistSheetState extends State<SaveToPlaylistSheet> {
                         size: 18,
                         color: AppColors.textSecondary,
                       ),
-                      onChanged: (val) {
-                        if (val != null) {
-                          _togglePlaylist(playlist, val);
-                        }
-                      },
+                      onChanged: _pendingPlaylistIds.contains(playlist.id)
+                          ? null
+                          : (val) {
+                              if (val != null) {
+                                _togglePlaylist(playlist, val);
+                              }
+                            },
                     );
                   },
                 ),

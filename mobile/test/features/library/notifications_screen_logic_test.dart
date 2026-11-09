@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vtube/core/auth/auth_provider.dart';
 import 'package:vtube/core/network/api_client.dart';
 import 'package:vtube/core/storage/token_storage.dart';
+import 'package:vtube/data/models/models.dart';
 import 'package:vtube/features/library/notifications_screen.dart';
 import 'package:vtube/shared/widgets/state_views.dart';
 
@@ -63,6 +64,49 @@ void main() {
       await tester.pumpAndSettle();
       expect(fakeNotifService.markReadCalls, 1);
       expect(fakeNotifService.lastMarkReadId, 1);
+    });
+
+    testWidgets('markRead failure rolls back read state and displays snackbar error', (tester) async {
+      await authProvider.login('test@vtube.com', '123456');
+
+      fakeNotifService.shouldFailMarkRead = true;
+
+      // Đặt thông báo chưa đọc không có videoId để không kích hoạt push sang màn khác
+      fakeNotifService.items = [
+        const NotificationItem(
+          id: 99,
+          type: 'system',
+          message: 'Thông báo hệ thống chưa đọc',
+          read: false,
+          createdAt: '2026-11-08T10:00:00Z',
+        ),
+      ];
+
+      await tester.pumpWidget(
+        createTestApp(
+          child: const NotificationsScreen(),
+          auth: authProvider,
+          notificationService: fakeNotifService,
+          historyService: fakeHistoryService,
+          playlistService: fakePlaylistService,
+          videoService: fakeVideoService,
+          uploadService: fakeUploadService,
+          authService: fakeAuthService,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Thông báo (id: 99) nằm trong mục "Mới"
+      expect(find.text('Mới'), findsOneWidget);
+      expect(find.textContaining('Thông báo hệ thống chưa đọc'), findsOneWidget);
+
+      // Nhấn vào thông báo -> gọi _onTapNotification -> _markReadWithRollback thất bại
+      await tester.tap(find.textContaining('Thông báo hệ thống chưa đọc'));
+      await tester.pumpAndSettle();
+
+      // State được rollback lại: item vẫn nằm trong mục "Mới" và chưa đọc
+      expect(find.text('Mới'), findsOneWidget);
+      expect(find.text('Lỗi cập nhật trạng thái đã đọc'), findsOneWidget);
     });
 
     testWidgets('Filter chip error clears items and displays ErrorView', (tester) async {
