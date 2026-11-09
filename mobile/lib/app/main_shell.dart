@@ -25,6 +25,50 @@ class ShortsTabScope extends InheritedWidget {
   bool updateShouldNotify(ShortsTabScope oldWidget) => isActive != oldWidget.isActive;
 }
 
+/// Scope truyền trạng thái tab Kênh đăng ký đang được chọn hay không.
+class SubscriptionsTabScope extends InheritedWidget {
+  final bool isActive;
+
+  const SubscriptionsTabScope({
+    super.key,
+    required this.isActive,
+    required super.child,
+  });
+
+  static bool of(BuildContext context) {
+    return context.dependOnInheritedWidgetOfExactType<SubscriptionsTabScope>()?.isActive ?? true;
+  }
+
+  static bool? maybeOf(BuildContext context) {
+    return context.dependOnInheritedWidgetOfExactType<SubscriptionsTabScope>()?.isActive;
+  }
+
+  @override
+  bool updateShouldNotify(SubscriptionsTabScope oldWidget) => isActive != oldWidget.isActive;
+}
+
+/// Scope truyền tab hiện tại đang được chọn của MainShell (0: Home, 1: Shorts, 2: Subscriptions, 3: Account).
+class MainShellScope extends InheritedWidget {
+  final int currentIndex;
+
+  const MainShellScope({
+    super.key,
+    required this.currentIndex,
+    required super.child,
+  });
+
+  static int of(BuildContext context) {
+    return context.dependOnInheritedWidgetOfExactType<MainShellScope>()?.currentIndex ?? 0;
+  }
+
+  static int? maybeOf(BuildContext context) {
+    return context.dependOnInheritedWidgetOfExactType<MainShellScope>()?.currentIndex;
+  }
+
+  @override
+  bool updateShouldNotify(MainShellScope oldWidget) => currentIndex != oldWidget.currentIndex;
+}
+
 /// Khung có Bottom Navigation: Trang chủ, Shorts, (+) Tạo, Kênh đăng ký, Bạn.
 /// Mỗi tab giữ trạng thái riêng (cuộn tới đâu vẫn ở đó khi quay lại).
 class MainShell extends StatelessWidget {
@@ -89,15 +133,20 @@ class MainShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
     final isShorts = navigationShell.currentIndex == 1;
-    return ShortsTabScope(
-      isActive: isShorts,
-      child: Scaffold(
-        body: navigationShell,
-        backgroundColor: isShorts ? Colors.black : null,
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: _branchToSlot[navigationShell.currentIndex],
-          onDestinationSelected: (slot) => _onTap(context, slot),
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+    final isSubscriptions = navigationShell.currentIndex == 2;
+    return MainShellScope(
+      currentIndex: navigationShell.currentIndex,
+      child: SubscriptionsTabScope(
+        isActive: isSubscriptions,
+        child: ShortsTabScope(
+          isActive: isShorts,
+          child: Scaffold(
+            body: navigationShell,
+            backgroundColor: isShorts ? Colors.black : null,
+            bottomNavigationBar: NavigationBar(
+              selectedIndex: _branchToSlot[navigationShell.currentIndex],
+              onDestinationSelected: (slot) => _onTap(context, slot),
+              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
           destinations: [
             const NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Trang chủ'),
             const NavigationDestination(
@@ -114,6 +163,8 @@ class MainShell extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 }

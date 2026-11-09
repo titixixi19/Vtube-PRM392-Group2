@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../app/main_shell.dart';
 import '../../app/routes.dart';
 import '../../app/theme.dart';
 import '../../core/auth/auth_provider.dart';
@@ -58,7 +59,7 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
   int _feedReqId = 0;
 
   bool? _lastLoggedIn;
-  int? _lastBranchIndex;
+  bool? _lastTabActive;
 
   @override
   void initState() {
@@ -69,12 +70,11 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final shell = StatefulNavigationShell.maybeOf(context);
-    final currentBranch = shell?.currentIndex;
-    if (currentBranch != null && currentBranch != _lastBranchIndex) {
-      final wasOtherBranch = _lastBranchIndex != null && _lastBranchIndex != 2;
-      _lastBranchIndex = currentBranch;
-      if (currentBranch == 2 && wasOtherBranch) {
+    final isTabActive = SubscriptionsTabScope.maybeOf(context);
+    if (isTabActive != null && isTabActive != _lastTabActive) {
+      final wasInactive = _lastTabActive == false;
+      _lastTabActive = isTabActive;
+      if (isTabActive && wasInactive) {
         final isLoggedIn = context.read<AuthProvider>().isLoggedIn;
         if (isLoggedIn) {
           _loadChannels();
@@ -299,13 +299,7 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                 icon: Icons.subscriptions_outlined,
                 title: 'Hãy đăng ký kênh để xem video mới nhất tại đây',
                 actionLabel: 'Khám phá kênh',
-                onAction: () async {
-                  await context.push(AppRoutes.home);
-                  if (mounted) {
-                    await _loadChannels();
-                    if (mounted) await _refreshFeed(silent: true);
-                  }
-                },
+                onAction: () => context.go(AppRoutes.home),
               ),
             ),
           ],
