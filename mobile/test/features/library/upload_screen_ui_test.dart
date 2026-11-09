@@ -96,5 +96,26 @@ void main() {
       expect(find.text('Chọn video Short'), findsOneWidget);
       expect(find.text('Tạo một video Short'), findsOneWidget);
     });
+
+    testWidgets('Shows snackbar "Tính năng đang phát triển" when tapping Quay video mới', (tester) async {
+      await tester.pumpWidget(
+        createTestApp(
+          child: const UploadScreen(),
+          auth: authProvider,
+          notificationService: fakeNotifService,
+          historyService: fakeHistoryService,
+          playlistService: fakePlaylistService,
+          videoService: fakeVideoService,
+          uploadService: fakeUploadService,
+          authService: fakeAuthService,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Quay video mới'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Tính năng đang phát triển'), findsOneWidget);
+    });
   });
 }

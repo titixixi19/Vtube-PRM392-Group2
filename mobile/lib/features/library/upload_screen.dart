@@ -565,7 +565,7 @@ class _UploadScreenState extends State<UploadScreen> {
                     minimumSize: const Size(64, 48),
                     shape: const StadiumBorder(),
                   ),
-                  onPressed: () => _pickVideo(ImageSource.camera),
+                  onPressed: () => showSnack(context, 'Tính năng đang phát triển'),
                 ),
               ),
             ],
