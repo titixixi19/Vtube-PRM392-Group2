@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vtube/data/models/models.dart';
 import 'package:vtube/features/watch/video_screen.dart';
+import 'package:vtube/shared/widgets/subscribe_button.dart';
 
 import 'watch_test_helpers.dart';
 
@@ -45,6 +47,40 @@ void main() {
       expect(find.widgetWithText(ChoiceChip, 'Tất cả'), findsOneWidget);
       expect(find.widgetWithText(ChoiceChip, 'Từ kênh này'), findsOneWidget);
       expect(find.text('Video Liên Quan 1'), findsOneWidget);
+    });
+
+    testWidgets('Video của chính mình (viewer.owner) không hiện nút Đăng ký', (tester) async {
+      videoService.returnDetail = createDummyVideo(
+        id: 1,
+        title: 'Video Của Tôi',
+        viewer: const ViewerState(owner: true),
+      );
+      await tester.pumpWidget(buildTestWatchApp(
+        videoService: videoService,
+        commentService: commentService,
+        historyService: historyService,
+        child: const VideoScreen(videoId: 1),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Video Của Tôi'), findsOneWidget);
+      expect(find.byType(SubscribeButton), findsNothing);
+    });
+
+    testWidgets('Video của kênh khác vẫn hiện nút Đăng ký', (tester) async {
+      videoService.returnDetail = createDummyVideo(
+        id: 1,
+        viewer: const ViewerState(owner: false),
+      );
+      await tester.pumpWidget(buildTestWatchApp(
+        videoService: videoService,
+        commentService: commentService,
+        historyService: historyService,
+        child: const VideoScreen(videoId: 1),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SubscribeButton), findsOneWidget);
     });
   });
 }

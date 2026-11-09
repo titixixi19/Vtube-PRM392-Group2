@@ -220,6 +220,48 @@ void main() {
       expect(find.text('Video đã được tải lên'), findsNothing);
     });
 
+    testWidgets('Tải lên xong chuyển sang trang kênh, bấm Back quay về màn trước (không thoát app)', (tester) async {
+      await authProvider.login('test@vtube.com', '123456');
+
+      await tester.pumpWidget(
+        createTestApp(
+          openFromHome: true,
+          child: UploadScreen(
+            pickVideo: (source) async => XFile('test/assets/test.mp4'),
+          ),
+          auth: authProvider,
+          notificationService: fakeNotifService,
+          historyService: fakeHistoryService,
+          playlistService: fakePlaylistService,
+          videoService: fakeVideoService,
+          uploadService: fakeUploadService,
+          authService: fakeAuthService,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Từ "Trang chủ" mở màn Tải lên
+      await tester.tap(find.text('Trang chủ giả'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Chọn từ thư viện'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).first, 'Video Back Test');
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Tải lên'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Channel Screen'), findsOneWidget);
+
+      // Back từ trang kênh: về Trang chủ, màn Tải lên đã bị thay nên không quay lại form
+      final navigator = tester.state<NavigatorState>(find.byType(Navigator).first);
+      expect(navigator.canPop(), isTrue);
+      navigator.pop();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Trang chủ giả'), findsOneWidget);
+      expect(find.text('Thêm thông tin'), findsNothing);
+    });
+
     testWidgets('Retry after record creation failure reuses cached uploaded URLs', (tester) async {
       await authProvider.login('test@vtube.com', '123456');
 

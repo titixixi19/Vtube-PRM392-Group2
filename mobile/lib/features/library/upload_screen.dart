@@ -368,9 +368,13 @@ class _UploadScreenState extends State<UploadScreen> {
       });
 
       showSnack(context, 'Video đã được tải lên');
+      // Thay màn Tải lên bằng trang kênh (không dùng go) để nút Back quay về màn
+      // trước đó, thay vì xóa cả lịch sử điều hướng và thoát app.
       final myChannelId = authProvider.user?.channel.id;
       if (myChannelId != null) {
-        context.go(AppRoutes.channel(myChannelId));
+        context.pushReplacement(AppRoutes.channel(myChannelId));
+      } else if (context.canPop()) {
+        context.pop();
       } else {
         context.go(AppRoutes.home);
       }

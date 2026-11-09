@@ -55,6 +55,9 @@ class _VideoInfoSectionState extends State<VideoInfoSection> {
     }
   }
 
+  /// Người xem là chủ kênh của video (viewer.owner do backend trả khi đã đăng nhập).
+  bool get _isOwnVideo => widget.video.viewer?.owner ?? false;
+
   void _initStateFromVideo() {
     _myReaction = widget.video.viewer?.myReaction ?? 0;
     _likeCount = widget.video.likeCount;
@@ -264,10 +267,12 @@ class _VideoInfoSectionState extends State<VideoInfoSection> {
                   ),
                 ),
               ),
-              SubscribeButton(
-                subscribed: _subscribed,
-                onPressed: _toggleSubscribe,
-              ),
+              // Video của chính mình thì không hiện nút Đăng ký (backend cũng chặn tự đăng ký kênh mình).
+              if (!_isOwnVideo)
+                SubscribeButton(
+                  subscribed: _subscribed,
+                  onPressed: _toggleSubscribe,
+                ),
             ],
           ),
           const SizedBox(height: 14),
