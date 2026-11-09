@@ -1,0 +1,19 @@
+// Bản vá cục bộ của video_thumbnail 0.5.6 (https://github.com/justsoft/video_thumbnail, MIT).
+// Bản gốc dùng jcenter() và AGP 4.1, không build được với Gradle 9 / AGP 9 của dự án.
+// Thay đổi: bỏ buildscript + jcenter(), dùng repository và AGP của app, đổi lintOptions -> lint.
+group 'xyz.justsoft.video_thumbnail'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'com.android.library'
+
+android {
+    compileSdk 36
+    namespace 'xyz.justsoft.video_thumbnail'
+
+    defaultConfig {
+        minSdk 21
+    }
+    lint {
+        disable 'InvalidPackage'
+    }
+}

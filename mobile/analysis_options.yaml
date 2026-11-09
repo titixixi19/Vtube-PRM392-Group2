@@ -3,6 +3,7 @@ analyzer:
     - build/**
     - android/**
     - ios/**
+    - packages/** # gói bên thứ ba chép về để vá (giữ nguyên code gốc)
 include: package:flutter_lints/flutter.yaml
 
 linter:
