@@ -60,7 +60,7 @@ Tài khoản mẫu: `demo@vtube.vn` / `123456`. Các kênh khác: `vtech@vtube.v
 }
 ```
 
-`viewer` chỉ có ở `GET /api/videos/{id}` khi đã đăng nhập:
+`viewer` chỉ có ở `GET /api/videos/{id}` và `GET /api/shorts` khi đã đăng nhập:
 
 ```json
 { "myReaction": 1, "subscribed": true, "notifyMode": "all", "progressSeconds": 300, "inWatchLater": false, "owner": false }
@@ -93,7 +93,7 @@ Ràng buộc đăng ký phía server:
 | --- | --- | --- | --- | --- |
 | GET | `/api/categories` | | `[{ id, name, slug }]` | 5 |
 | GET | `/api/videos/feed` | `category`, `page`, `size` | `Page<Video>` | 5 |
-| GET | `/api/shorts` | `page`, `size` | `Page<Video>` | 5, 8 |
+| GET | `/api/shorts` | `page`, `size` | `Page<Video>` (có `viewer` khi đã đăng nhập) | 5, 8 |
 | GET | `/api/videos/{id}` | | `Video` (có `viewer`) | 6 |
 | GET | `/api/videos/{id}/related` | `filter`, `page`, `size` | `Page<Video>` | 6 |
 | POST | `/api/videos/{id}/view` | | `204` | 6, 8 |

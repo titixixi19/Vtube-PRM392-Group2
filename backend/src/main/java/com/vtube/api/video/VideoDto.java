@@ -4,7 +4,7 @@ import com.vtube.api.channel.ChannelBrief;
 
 /**
  * Video trả về cho app. Dùng chung cho feed, shorts, tìm kiếm, lịch sử, playlist...
- * viewer chỉ có giá trị ở API GET /api/videos/{id}, các API khác trả null.
+ * viewer chỉ có giá trị ở API GET /api/videos/{id} và GET /api/shorts (khi đã đăng nhập), các API khác trả null.
  */
 public record VideoDto(
         long id,
